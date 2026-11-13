@@ -1,0 +1,6 @@
+{
+  "entrypoint": "server.js",
+  "compatibilityDate": "2026-10-01",
+  "modules": [{ "name": "server.js", "type": "esm", "path": "./dist/server.js" }],
+  "assetsDirectory": "./public"
+}

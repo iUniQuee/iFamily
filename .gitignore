@@ -1,0 +1,24 @@
+/freebuff-sites-build/
+node_modules/
+.wrangler/
+dist/
+artifacts/
+exports/
+
+# Local backups and database dumps (family data, not source)
+*.zip
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets and local configuration
+.env
+.env.*
+.dev.vars
+.vapid-keys.json
+
+# Logs and generated screenshots
+*.log
+icon-preview.png
+.DS_Store

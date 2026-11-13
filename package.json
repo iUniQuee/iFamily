@@ -1,0 +1,14 @@
+{
+  "name": "i-family",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "test": "node test-tree.mjs && node test-tree2.mjs && node test-zurkhai.mjs && node test-genitive.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
