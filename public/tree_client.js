@@ -686,20 +686,6 @@
       if (e.t !== 'b' || (!shown.has(e.a) && !shown.has(e.b))) continue;
       for (const st of e.stubs || []) if (shown.has(st.c)) busDone.add(st.c);
     }
-    // Хосын хань (ижил мөрний) — холбоосыг хосын ТӨВӨӨР татна.
-    const spOf = new Map();
-    for (const e of es) {
-      if (e.t !== 's' || !shown.has(e.a) || !shown.has(e.b)) continue;
-      const na = LN.get(e.a), nb = LN.get(e.b);
-      if (na && nb && Math.abs(na.y - nb.y) < 8) { spOf.set(e.a, e.b); spOf.set(e.b, e.a); }
-    }
-    const coupleX = (id, fallback) => {
-      const n = LN.get(id);
-      const sp = spOf.get(id);
-      const m = sp != null ? LN.get(sp) : null;
-      if (!n || !m) return fallback;
-      return (Math.min(n.x, m.x) + Math.max(n.x + (n.w || CW), m.x + (m.w || CW))) / 2;
-    };
     for (const e of es) {
       if (e.t === 's') {
         if (!shown.has(e.a) || !shown.has(e.b)) continue;
@@ -732,18 +718,10 @@
         const stubs = (e.stubs || []).filter(s => shown.has(s.c));
         if (!stubs.length) continue;
         // Шугмыг ХАРАГДАЖ байгаа эцэг/эхийнх нь картын ГОЛООС татна
-        // Сонгосон хүн хосын гишүүн бол шугмаа ЯГ ТҮҮНИЙ картын голоос гарна
-        // (хосын дундаас биш) — «энэ хүнээс дээшээ» гэдэг нь тодорхой хүн.
-        const selHere = relSel != null &&
-          (String(relSel) === String(e.a) || String(relSel) === String(e.b));
-        const stemX = selHere ? midOf(relSel, e.x)
-          : (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
-            : (pa ? midOf(e.a, e.x) : midOf(e.b, e.x));
+        const stemX = (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
+          : (pa ? midOf(e.a, e.x) : midOf(e.b, e.x));
         // Салаа бүр хүүхдийнхээ картын ЯГ ГОЛ руу бууна (дундаа тасрахгүй)
-        // Серверээс ирсэн x-ыг ХҮНДЭТГЭНЭ: хосын гишүүн бол хосын төв
-        // (нэг шугам), эс бөгөөс картын гол. Өмнө нь үргэлж картын голыг
-        // ашигладаг тул хос дээр 2 шугам болдог байв.
-        const stub = stubs.map(st => ({ c: st.c, x: (st.x != null ? st.x : midOf(st.c, e.x)), y1: st.y1 }));
+        const stub = stubs.map(st => ({ c: st.c, x: midOf(st.c, st.x), y1: st.y1 }));
         const xs = stub.map(st => st.x);
         const bx1 = Math.min(stemX, ...xs), bx2 = Math.max(stemX, ...xs);
         // Тавцангийн өнгө: салаа БҮГД дээшээ үе (сонгосон хүн/өвөг) бол ШАР.
@@ -811,12 +789,8 @@
         // Зөвхөн ШУЛУУН (ортогональ) шугам — мурий (bezier) зураас хэрэглэхгүй.
         // Төгсгөлүүд нь картын ГОЛ + ирмэг дээр таарна (агаарт дуусахгүй).
         const pn = LN.get(e.p), cn = LN.get(e.c);
-        let x1 = pn ? coupleX(e.p, pn.x + (pn.w || CW) / 2) : e.x1;
-        // Хүүхдийн төгсгөл: хосын ХОЁР гишүүн чинь энэ эцэг/эхийн хүүхэд
-        // бол хосын төв, эс бөгөөс тухайн хүний картын гол.
-        const spC = spOf.get(e.c);
-        const coChild = spC != null && (parOf.get(spC) || []).some(pp => String(pp) === String(e.p));
-        let x2 = cn ? (coChild ? coupleX(e.c, cn.x + (cn.w || CW) / 2) : cn.x + (cn.w || CW) / 2) : e.x2;
+        let x1 = pn ? pn.x + (pn.w || CW) / 2 : e.x1;
+        let x2 = cn ? cn.x + (cn.w || CW) / 2 : e.x2;
         let y1 = e.y1, y2 = e.y2;
         if (pn && cn) {
           if (cn.y >= pn.y + CH) { y1 = pn.y + CH; y2 = cn.y; }            // хүүхэд доор

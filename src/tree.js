@@ -391,25 +391,6 @@ export function layoutTree({ members, children, unions, order, gaps }) {
   };
 
   const nodes = [];
-  // Хосын картуудыг НЭГ цэгээр (хосын төв) холбоно — эцэг/эх рүү нэг л
-  // босоо шугам гарна (хоёр шугам болохгүй).
-  const unitMid = (n) => {
-    const ids = [n.id, ...(adjSp.get(n.id) || [])];
-    let un = ids.map(id => nodeAt.get(id)).filter(Boolean).filter(q => q.y === n.y);
-    if (un.length < 2) {
-      // Нөөц: ижил мөрөнд ЯГ хосын зайтай (186px) зэрэгцсэн картыг хос гэж үзнэ
-      const target = n.x + CARD_W + COUPLE_GAP;
-      for (const q of nodeAt.values()) {
-        if (q.id === n.id || q.y !== n.y) continue;
-        if (Math.abs(q.x - target) <= 3 || Math.abs(q.x + CARD_W + COUPLE_GAP - n.x) <= 3) un = [n, q];
-      }
-    }
-    if (un.length < 2) return mid(n);
-    const l = Math.min(...un.map(q => q.x));
-    const r = Math.max(...un.map(q => q.x + W(q.id)));
-    return (l + r) / 2;
-  };
-
   const nodeAt = new Map();
   const visited = new Set();
 
@@ -801,7 +782,7 @@ export function layoutTree({ members, children, unions, order, gaps }) {
       t: 'b', a, b,
       kids: kidNodes.map(n => n.id),
       x: stemX, y0: stemY0P, y1: busY,
-      stubs: kidNodes.map(n => ({ c: n.id, x: unitMid(n), y0: busY, y1: n.y }))
+      stubs: kidNodes.map(n => ({ c: n.id, x: mid(n), y0: busY, y1: n.y }))
     });
   }
   for (const { p, kids: g } of soloKids.values()) {
@@ -829,7 +810,7 @@ export function layoutTree({ members, children, unions, order, gaps }) {
       t: 'b', a: p, b: p,
       kids: kidNodes.map(n => n.id),
       x: stemX, y0: stemY0S, y1: busY,
-      stubs: kidNodes.map(n => ({ c: n.id, x: unitMid(n), y0: busY, y1: n.y }))
+      stubs: kidNodes.map(n => ({ c: n.id, x: mid(n), y0: busY, y1: n.y }))
     });
   }
 
