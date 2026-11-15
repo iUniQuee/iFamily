@@ -682,8 +682,6 @@
     // Хосын тавцан (b) аль хүүхдийг аль хэдийн холбосон бэ — тэдэнд эцэг/эх
     // тус бүрээс ТУСДАА шугам (c) зурахгүй, ингэснээр 2 биш 1 гол шугам гарна.
     const busDone = new Set();
-    // Нэг хүүхэд рүү эцэг, эх ХОЁР тусдаа шугам татахгүй — хос бол НЭГ шугам.
-    const cDrawn = new Set();
     for (const e of es) {
       if (e.t !== 'b' || (!shown.has(e.a) && !shown.has(e.b))) continue;
       for (const st of e.stubs || []) if (shown.has(st.c)) busDone.add(st.c);
@@ -803,22 +801,10 @@
       } else if (e.t === 'c') {
         if (!shown.has(e.p) || !shown.has(e.c)) continue;
         if (busDone.has(e.c)) continue; // тавцангаар холбогдсон — давхар шугам хэрэггүй
-        if (cDrawn.has(e.c)) continue;   // хосын нөгөө гишүүн аль хэдийн зурсан
-        cDrawn.add(e.c);
         // Зөвхөн ШУЛУУН (ортогональ) шугам — мурий (bezier) зураас хэрэглэхгүй.
         // Төгсгөлүүд нь картын ГОЛ + ирмэг дээр таарна (агаарт дуусахгүй).
         const pn = LN.get(e.p), cn = LN.get(e.c);
-        // Эцэг/эх нь хос бол шугамыг хоёрынхоо ДУНДААС гаргана.
         let x1 = pn ? pn.x + (pn.w || CW) / 2 : e.x1;
-        {
-          const sp = spOf.get(e.p);
-          const sn = sp != null ? LN.get(sp) : null;
-          const spIsParent = sp != null && (parOf.get(e.c) || []).some(pp => String(pp) === String(sp));
-          if (sn && spIsParent && Math.abs(sn.y - pn.y) < 4) {
-            const a = { x: Math.min(pn.x, sn.x), r: Math.max(pn.x + (pn.w || CW), sn.x + (sn.w || CW)) };
-            x1 = (a.x + a.r) / 2;
-          }
-        }
         let x2 = cn ? cn.x + (cn.w || CW) / 2 : e.x2;
         let y1 = e.y1, y2 = e.y2;
         if (pn && cn) {
