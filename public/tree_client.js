@@ -758,7 +758,7 @@
           const r2 = l === pn[0] ? pn[1] : pn[0];
           const gapL = l.x + (l.w || CW), gapR = r2.x;
           if (stemX >= gapL - 1 && stemX <= gapR + 1) {
-            stemY0 = Math.round(l.y + CH / 2);
+            stemY0 = Math.round(l.y + CH / 2) - 6; // хосын шугам руу бага зэрэг давхарлаж нийлүүлнэ
           }
         }
         // Хосын хоёр карт НЭГ МӨРӨНД, шугмаа хоорондын зайд байвал шугмыг
