@@ -697,8 +697,12 @@
         if (na && nb) {
           const wa = na.w || CW, wb = nb.w || CW;
           if (Math.abs(na.y - nb.y) < 4) {
-            if (na.x <= nb.x) { sx1 = na.x + wa; sx2 = nb.x; }
-            else { sx1 = nb.x + wb; sx2 = na.x; }
+            // Хосын шугам картуудын ирмэг хүртэл БҮРЭН хүрнэ — карт бүрийн
+            // доогуур 10px давхарлаж татна (карт нь шугамаас дээр зурдаг тул
+            // илүү хэсэг нь харагдахгүй, завсар л арилна).
+            const PAD = 10;
+            if (na.x <= nb.x) { sx1 = na.x + wa - PAD; sx2 = nb.x + PAD; }
+            else { sx1 = nb.x + wb - PAD; sx2 = na.x + PAD; }
             sy1 = sy2 = na.y + CH / 2;
           } else {
             // Өөр мөрөнд: дээд картын доод ирмэг → доод картын дээд ирмэг (голоор)
