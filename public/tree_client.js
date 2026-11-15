@@ -732,8 +732,12 @@
         const stubs = (e.stubs || []).filter(s => shown.has(s.c));
         if (!stubs.length) continue;
         // Шугмыг ХАРАГДАЖ байгаа эцэг/эхийнх нь картын ГОЛООС татна
-        const stemX = (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
-          : (pa ? midOf(e.a, e.x) : midOf(e.b, e.x));
+        // Сонгосон хүн хосын гишүүн бол шугмаа ЯГ ТҮҮНИЙ картын голоос гарна
+        // (хосын дундаас биш) — «энэ хүнээс дээшээ» гэдэг нь тодорхой хүн.
+        const selHere = relSel != null && (relSel === e.a || relSel === e.b);
+        const stemX = selHere ? midOf(relSel, e.x)
+          : (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
+            : (pa ? midOf(e.a, e.x) : midOf(e.b, e.x));
         // Салаа бүр хүүхдийнхээ картын ЯГ ГОЛ руу бууна (дундаа тасрахгүй)
         // Серверээс ирсэн x-ыг ХҮНДЭТГЭНЭ: хосын гишүүн бол хосын төв
         // (нэг шугам), эс бөгөөс картын гол. Өмнө нь үргэлж картын голыг
