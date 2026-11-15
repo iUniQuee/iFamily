@@ -1075,6 +1075,11 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
   }
   // Хажуугийн эцэг/эх → хүүхэд (муруй шугам). ҮНДСЭН эцэг/эхийн холбоос нь
   // дээрх салбарын (`b`) шугмаар аль хэдийн зурагдсан — давхар зурахгүй.
+  // Нэг хүүхэд рүү НЭГ л холбоос: эцэг, эх нь хос бол хоёуланг нь
+  // тус тусад нь зурахгүй — хосын (нэгж) төвөөс нэг шугам гаргана.
+  const cEdgeSeen = new Set();
+  const unitById = new Map();
+  for (const u of units) for (const id of u.ids) unitById.set(id, u);
   for (const u of units) {
     const primary = parentOf.get(u.key);
     for (const id of u.ids) {
@@ -1082,9 +1087,19 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
         if (!pos.has(p) || !pos.has(id)) continue;
         const pk = unitKeyOf.get(p);
         if (pk === primary || pk === u.key) continue;      // үндсэн салбарт орсон
+        const key = id + '|' + pk;
+        if (cEdgeSeen.has(key)) continue;
+        cEdgeSeen.add(key);
+        // Эцэг/эхийн нэгжийн (хосын) төв — нэг мөрөнд байвал
+        const pu = unitById.get(p);
+        const pCards = pu ? pu.ids.map(k => pos.get(k)).filter(Boolean).filter(r => r.y === pos.get(p).y) : [];
+        let px = pos.get(p).x + CARD_W / 2;
+        if (pCards.length > 1) {
+          px = (Math.min(...pCards.map(r => r.x)) + Math.max(...pCards.map(r => r.x)) + CARD_W) / 2;
+        }
         edges.push({
           t: 'c', p, c: id,
-          x1: pos.get(p).x + CARD_W / 2, y1: pos.get(p).y + CARD_H,
+          x1: px, y1: pos.get(p).y + CARD_H,
           x2: pos.get(id).x + CARD_W / 2, y2: pos.get(id).y
         });
       }
