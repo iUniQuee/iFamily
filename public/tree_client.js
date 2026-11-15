@@ -686,20 +686,20 @@
       if (e.t !== 'b' || (!shown.has(e.a) && !shown.has(e.b))) continue;
       for (const st of e.stubs || []) if (shown.has(st.c)) busDone.add(st.c);
     }
-    // Хос бол НЭГ холбоос: нөхөр/эхнэрийн аль нэг нь тавцангаар холбогдсон
-    // бол нөгөө рүү нь ТУСДАА шугам (c) зурахгүй — хос дээр 2 шугам гардаг байв.
-    {
-      const spOf = new Map();
-      for (const e of es) {
-        if (e.t !== 's' || !shown.has(e.a) || !shown.has(e.b)) continue;
-        const na = LN.get(e.a), nb = LN.get(e.b);
-        if (na && nb && Math.abs(na.y - nb.y) < 8) { spOf.set(e.a, e.b); spOf.set(e.b, e.a); }
-      }
-      for (const id of [...busDone]) {
-        const sp = spOf.get(id);
-        if (sp != null && shown.has(sp)) busDone.add(sp);
-      }
+    // Хосын хань (ижил мөрний) — холбоосыг хосын ТӨВӨӨР татна.
+    const spOf = new Map();
+    for (const e of es) {
+      if (e.t !== 's' || !shown.has(e.a) || !shown.has(e.b)) continue;
+      const na = LN.get(e.a), nb = LN.get(e.b);
+      if (na && nb && Math.abs(na.y - nb.y) < 8) { spOf.set(e.a, e.b); spOf.set(e.b, e.a); }
     }
+    const coupleX = (id, fallback) => {
+      const n = LN.get(id);
+      const sp = spOf.get(id);
+      const m = sp != null ? LN.get(sp) : null;
+      if (!n || !m) return fallback;
+      return (Math.min(n.x, m.x) + Math.max(n.x + (n.w || CW), m.x + (m.w || CW))) / 2;
+    };
     for (const e of es) {
       if (e.t === 's') {
         if (!shown.has(e.a) || !shown.has(e.b)) continue;
@@ -806,7 +806,7 @@
         // Зөвхөн ШУЛУУН (ортогональ) шугам — мурий (bezier) зураас хэрэглэхгүй.
         // Төгсгөлүүд нь картын ГОЛ + ирмэг дээр таарна (агаарт дуусахгүй).
         const pn = LN.get(e.p), cn = LN.get(e.c);
-        let x1 = pn ? pn.x + (pn.w || CW) / 2 : e.x1;
+        let x1 = pn ? coupleX(e.p, pn.x + (pn.w || CW) / 2) : e.x1;
         let x2 = cn ? cn.x + (cn.w || CW) / 2 : e.x2;
         let y1 = e.y1, y2 = e.y2;
         if (pn && cn) {
