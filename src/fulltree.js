@@ -1068,9 +1068,29 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
       t: 'b', a: u.ids[0], b: u.ids[u.ids.length - 1],
       kids: kidIds,
       x: stemX, y0: first.y + CARD_H, y1: busY,
-      stubs: kidIds.map(id => ({
-        c: id, x: pos.get(id).x + CARD_W / 2, y0: busY, y1: pos.get(id).y
-      }))
+      // Хос бол НЭГ шугмаар (хосын төвөөр) холбоно — хоёр шугам болохгүй
+      stubs: (() => {
+        const unitByKey = new Map(units.map(uu => [uu.key, uu]));
+        const seen = new Set();
+        const out = [];
+        for (const id of kidIds) {
+          const q = pos.get(id);
+          if (!q) continue;
+          const un = unitByKey.get(unitKeyOf.get(id));
+          let x = q.x + CARD_W / 2;
+          if (un) {
+            const cards = un.ids.map(k => pos.get(k)).filter(Boolean).filter(r => r.y === q.y);
+            if (cards.length > 1) {
+              x = (Math.min(...cards.map(r => r.x)) + Math.max(...cards.map(r => r.x)) + CARD_W) / 2;
+            }
+          }
+          const key = Math.round(x);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push({ c: id, x, y0: busY, y1: q.y });
+        }
+        return out;
+      })()
     });
   }
   // Хажуугийн эцэг/эх → хүүхэд (муруй шугам). ҮНДСЭН эцэг/эхийн холбоос нь

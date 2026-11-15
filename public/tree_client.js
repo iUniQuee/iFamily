@@ -686,6 +686,20 @@
       if (e.t !== 'b' || (!shown.has(e.a) && !shown.has(e.b))) continue;
       for (const st of e.stubs || []) if (shown.has(st.c)) busDone.add(st.c);
     }
+    // Хос бол НЭГ холбоос: нөхөр/эхнэрийн аль нэг нь тавцангаар холбогдсон
+    // бол нөгөө рүү нь ТУСДАА шугам (c) зурахгүй — хос дээр 2 шугам гардаг байв.
+    {
+      const spOf = new Map();
+      for (const e of es) {
+        if (e.t !== 's' || !shown.has(e.a) || !shown.has(e.b)) continue;
+        const na = LN.get(e.a), nb = LN.get(e.b);
+        if (na && nb && Math.abs(na.y - nb.y) < 8) { spOf.set(e.a, e.b); spOf.set(e.b, e.a); }
+      }
+      for (const id of [...busDone]) {
+        const sp = spOf.get(id);
+        if (sp != null && shown.has(sp)) busDone.add(sp);
+      }
+    }
     for (const e of es) {
       if (e.t === 's') {
         if (!shown.has(e.a) || !shown.has(e.b)) continue;
@@ -721,7 +735,10 @@
         const stemX = (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
           : (pa ? midOf(e.a, e.x) : midOf(e.b, e.x));
         // Салаа бүр хүүхдийнхээ картын ЯГ ГОЛ руу бууна (дундаа тасрахгүй)
-        const stub = stubs.map(st => ({ c: st.c, x: midOf(st.c, st.x), y1: st.y1 }));
+        // Серверээс ирсэн x-ыг ХҮНДЭТГЭНЭ: хосын гишүүн бол хосын төв
+        // (нэг шугам), эс бөгөөс картын гол. Өмнө нь үргэлж картын голыг
+        // ашигладаг тул хос дээр 2 шугам болдог байв.
+        const stub = stubs.map(st => ({ c: st.c, x: (st.x != null ? st.x : midOf(st.c, e.x)), y1: st.y1 }));
         const xs = stub.map(st => st.x);
         const bx1 = Math.min(stemX, ...xs), bx2 = Math.max(stemX, ...xs);
         // Тавцангийн өнгө: салаа БҮГД дээшээ үе (сонгосон хүн/өвөг) бол ШАР.
