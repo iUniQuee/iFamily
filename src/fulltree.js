@@ -1079,7 +1079,12 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
           const un = unitByKey.get(unitKeyOf.get(id));
           let x = q.x + CARD_W / 2;
           if (un) {
-            const cards = un.ids.map(k => pos.get(k)).filter(Boolean).filter(r => r.y === q.y);
+            // Зөвхөн хосын ХОЁР гишүүн чинь энэ эцэг/эхийн хүүхэд бол
+            // хосын төвөөр нэгтгэнэ; хань нь өөр эцэг/эхийн хүүхэд бол
+            // шугам тухайн хүний картын голоор бууна.
+            const kidSet = new Set(kidIds);
+            const cards = un.ids.map(k => pos.get(k)).filter(Boolean)
+              .filter(r => r.y === q.y && kidSet.has(un.ids.find(k => pos.get(k) === r)));
             if (cards.length > 1) {
               x = (Math.min(...cards.map(r => r.x)) + Math.max(...cards.map(r => r.x)) + CARD_W) / 2;
             }

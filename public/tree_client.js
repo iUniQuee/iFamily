@@ -734,7 +734,8 @@
         // Шугмыг ХАРАГДАЖ байгаа эцэг/эхийнх нь картын ГОЛООС татна
         // Сонгосон хүн хосын гишүүн бол шугмаа ЯГ ТҮҮНИЙ картын голоос гарна
         // (хосын дундаас биш) — «энэ хүнээс дээшээ» гэдэг нь тодорхой хүн.
-        const selHere = relSel != null && (relSel === e.a || relSel === e.b);
+        const selHere = relSel != null &&
+          (String(relSel) === String(e.a) || String(relSel) === String(e.b));
         const stemX = selHere ? midOf(relSel, e.x)
           : (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
             : (pa ? midOf(e.a, e.x) : midOf(e.b, e.x));
@@ -811,7 +812,11 @@
         // Төгсгөлүүд нь картын ГОЛ + ирмэг дээр таарна (агаарт дуусахгүй).
         const pn = LN.get(e.p), cn = LN.get(e.c);
         let x1 = pn ? coupleX(e.p, pn.x + (pn.w || CW) / 2) : e.x1;
-        let x2 = cn ? cn.x + (cn.w || CW) / 2 : e.x2;
+        // Хүүхдийн төгсгөл: хосын ХОЁР гишүүн чинь энэ эцэг/эхийн хүүхэд
+        // бол хосын төв, эс бөгөөс тухайн хүний картын гол.
+        const spC = spOf.get(e.c);
+        const coChild = spC != null && (parOf.get(spC) || []).some(pp => String(pp) === String(e.p));
+        let x2 = cn ? (coChild ? coupleX(e.c, cn.x + (cn.w || CW) / 2) : cn.x + (cn.w || CW) / 2) : e.x2;
         let y1 = e.y1, y2 = e.y2;
         if (pn && cn) {
           if (cn.y >= pn.y + CH) { y1 = pn.y + CH; y2 = cn.y; }            // хүүхэд доор
