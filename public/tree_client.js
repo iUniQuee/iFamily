@@ -801,10 +801,24 @@
       } else if (e.t === 'c') {
         if (!shown.has(e.p) || !shown.has(e.c)) continue;
         if (busDone.has(e.c)) continue; // тавцангаар холбогдсон — давхар шугам хэрэггүй
+        // Хос бол хүүхэд рүү НЭГ л шугам: хоёр дахь эцэг/эхийнхийг зурхгүй.
+        const spx = spOf.get(e.p);
+        const spxParent = spx != null &&
+          (parOf.get(e.c) || []).some(pp => String(pp) === String(spx));
+        if (spxParent && Number(e.p) > Number(spx)) continue;
         // Зөвхөн ШУЛУУН (ортогональ) шугам — мурий (bezier) зураас хэрэглэхгүй.
         // Төгсгөлүүд нь картын ГОЛ + ирмэг дээр таарна (агаарт дуусахгүй).
         const pn = LN.get(e.p), cn = LN.get(e.c);
+        // Эцэг/эх нь хос бол шугамыг хоёрынхоо ДУНДААС гаргана.
         let x1 = pn ? pn.x + (pn.w || CW) / 2 : e.x1;
+        if (spxParent && pn) {
+          const sn = LN.get(spx);
+          if (sn && Math.abs(sn.y - pn.y) < 4) {
+            const lo = Math.min(pn.x, sn.x);
+            const hi = Math.max(pn.x + (pn.w || CW), sn.x + (sn.w || CW));
+            x1 = (lo + hi) / 2;
+          }
+        }
         let x2 = cn ? cn.x + (cn.w || CW) / 2 : e.x2;
         let y1 = e.y1, y2 = e.y2;
         if (pn && cn) {
