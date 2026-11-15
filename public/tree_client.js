@@ -807,7 +807,7 @@
         // Төгсгөлүүд нь картын ГОЛ + ирмэг дээр таарна (агаарт дуусахгүй).
         const pn = LN.get(e.p), cn = LN.get(e.c);
         let x1 = pn ? coupleX(e.p, pn.x + (pn.w || CW) / 2) : e.x1;
-        let x2 = cn ? cn.x + (cn.w || CW) / 2 : e.x2;
+        let x2 = cn ? coupleX(e.c, cn.x + (cn.w || CW) / 2) : e.x2;
         let y1 = e.y1, y2 = e.y2;
         if (pn && cn) {
           if (cn.y >= pn.y + CH) { y1 = pn.y + CH; y2 = cn.y; }            // хүүхэд доор
