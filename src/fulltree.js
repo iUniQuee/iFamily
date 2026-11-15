@@ -9,8 +9,9 @@
 //   • Нэг л салбар нээлттэй (аккордеон): өөр карт дарвал өмнөх нь хумигдана.
 import { CARD_W, CARD_H, ROW_H, sortMembers } from './tree.js';
 
-export const COUPLE_GAP = 24;   // хосын хоёр картын хоорондох зай (.family-couple gap)
+export const COUPLE_GAP = 30;   // хосын хоёр картын хоорондох зай (.family-couple gap)
 export const SIB_GAP = 46;      // ах/дүү нарын (нэг эцэг/эхийн) зай (.generation-row gap)
+export const BLOCK_GAP = 130;    // өөр гэр бүлийн блокуудын хоорондох зай (ялгагдахаар)
 export const FAM_GAP = 46;      // өөр гэр бүл/салбар хоорондын зай (мөн 46)
 
 // viewer-ийн ЦУСАН ШУГАМ: өвөг (хязгааргүй дээшээ), өвөг бүрийн ах/дүү,
@@ -101,6 +102,100 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
   const openTarget = openable(openId) ? openId : (parentsOfViewer[0] ?? viewerId);
   const defaultTarget = parentsOfViewer[0] ?? viewerId;      // анхдагч (эцэг/эх) салбар
   const openParents = new Set(rel.par.get(openTarget) || []);  // нээсэн хүний аав/ээж
+  const explicitOpen = openable(openId);
+
+  // ── ЗҮҮН / БАРУУН ТАЛ ────────────────────────────────────────────────
+  // Default: нэвтэрсэн хэрэглэгчийн ААВЫН тал зүүн, эхийн тал баруун.
+  // Дарсан үед: дарсан хүний удам угсаа (ах/дүү, өвөг, үр удам) зүүн,
+  // хань болон түүний тал баруун гар талд байрлана.
+  const focusId = explicitOpen ? openTarget
+    : (parentsOfViewer.find(id => sexById.get(id) === 'm') ?? parentsOfViewer[0] ?? viewerId);
+
+  // ААВЫН ТАЛ / ЭХИЙН ТАЛ ТУСДАА: эрэгтэй хүн дээр аавын тал, эмэгтэй
+  // хүн дээр эхийн тал зүүн гарт; нөгөө тал нь баруун гарт тусдаа мод.
+  const focusParents = [...(rel.par.get(focusId) || [])];
+  const focusFather = focusParents.find(id => sexById.get(id) === 'm') ?? null;
+  const focusMother = focusParents.find(id => sexById.get(id) === 'f') ?? null;
+  // ХҮЙСЭЭР ЯЛГАХГҮЙ: аль ч хүн дээр дарахад ААВЫН тал зүүн, эхийн тал баруун.
+  const mainParentId = focusFather ?? focusMother;
+  const otherParentId = mainParentId === focusMother ? focusFather : focusMother;
+  const focusSideParentId = mainParentId;
+  const mainLine = new Set(mainParentId != null
+    ? lineage(rel, mainParentId).ids : lineage(rel, focusId).ids);
+  const otherLine = new Set(otherParentId != null ? lineage(rel, otherParentId).ids : []);
+  // ШУУД ӨВӨГ (аав/ээж, өвөө/эмээ …) — хажуугийн ах/дүү, авга/нагацаас
+  // түрүүлж, мөрийнхөө урд/зүүн талд гарна.
+  const directAncestors = new Set();
+  {
+    let up = [focusId];
+    const seenUp = new Set(up);
+    while (up.length) {
+      const nx = [];
+      for (const id of up) {
+        for (const p of rel.par.get(id) || []) {
+          if (p == null || seenUp.has(p)) continue;
+          seenUp.add(p);
+          directAncestors.add(p);
+          nx.push(p);
+        }
+      }
+      up = nx;
+    }
+  }
+  // Үндсэн талын шууд өвөг — ах/дүү нарынхаа БАРУУН талд (сүүлд) зогсоно.
+  const mainAncestors = new Set([...directAncestors].filter(id => mainLine.has(id)));
+  const otherAncestors = new Set([...directAncestors].filter(id => otherLine.has(id)));
+  // Дарсан хүнд эцэг/эх байхгүй (жишээ: хүргэн Баяраа) — ханийнх нь шууд
+  // эцэг/эх (Дорж, Энхчимэг) түрүүлж, хажуугийн ах/дүү (Батэрдэнэ) ард гарна.
+  const sideAncestors = new Set(directAncestors);
+  // Ханийн талын шууд өвөг — хос эцэг/эхийг хүүхдийнхээ ЯГ ДЭЭР
+  // төвлөрүүлэхэд ашиглана (жишээ: Болд/Мэндбилэг → Баярсайхан).
+  const spouseAncestors = new Set();
+  const focusSpouses = spousesOf(focusId);
+  if (!focusSpouses.length) {
+    for (const k of rel.kids.get(focusId) || []) {
+      for (const p of rel.par.get(k) || []) if (p !== focusId) focusSpouses.push(p);
+    }
+  }
+  for (const sp of focusSpouses) {
+    let up = [sp];
+    const seenUp = new Set(up);
+    while (up.length) {
+      const nx = [];
+      for (const id of up) {
+        for (const p of rel.par.get(id) || []) {
+          if (p == null || seenUp.has(p)) continue;
+          seenUp.add(p);
+          spouseAncestors.add(p);
+          nx.push(p);
+        }
+      }
+      up = nx;
+    }
+  }
+  const pathAncestors = new Set([...directAncestors, ...spouseAncestors]);
+  if (!sideAncestors.size) {
+    for (const sp of spousesOf(focusId)) {
+      let up = [sp];
+      const seenUp = new Set(up);
+      while (up.length) {
+        const nx = [];
+        for (const id of up) {
+          for (const p of rel.par.get(id) || []) {
+            if (p == null || seenUp.has(p)) continue;
+            seenUp.add(p);
+            sideAncestors.add(p);
+            nx.push(p);
+          }
+        }
+        up = nx;
+      }
+    }
+  }
+  const spouseLine = new Set();
+  for (const sp of spousesOf(focusId)) {
+    for (const id of lineage(rel, sp).ids) spouseLine.add(id);
+  }
 
   // Нээлттэй ГЭР БҮЛ (хос ба түүнээс дээш хань)
   const openFamily = new Set([openTarget]);
@@ -114,7 +209,6 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
     }
   }
 
-  const explicitOpen = openable(openId);
   // ЮУ Ч НУУГДАХГҮЙ: D1-ийн бүх цусан гишүүн + тэдний хань (бүх гэр бүл)
   // харагдана. Дарсан хүн зөвхөн ҮЕИЙН МӨРИЙГ төвлөрүүлнэ: тэр доод талд,
   // өвөг нь хязгааргүй дээшээ, ах/дүү нар нь хажууд нь (хань нь хажууд),
@@ -277,7 +371,19 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
           if (geoCards.has(s) && !seen.has(s)) { seen.add(s); q.push(s); }
         }
       }
-      ids.sort((a, b) => (blood.has(a) ? 0 : 1) - (blood.has(b) ? 0 : 1) || a - b);
+      // ХОСЫН ДОТОР: зүүн талын (main) хүн эхэнд, хань нь ард. Дараа нь
+      // аав зүүн / ээж баруун, эцэст нь цусан тал түрүүлнэ.
+      ids.sort((a, b) => {
+        const ra = mainLine.has(a) ? 0 : ((otherLine.has(a) || spouseLine.has(a)) ? 2 : 1);
+        const rb = mainLine.has(b) ? 0 : ((otherLine.has(b) || spouseLine.has(b)) ? 2 : 1);
+        if (ra !== rb) return ra - rb;
+        if (a === focusSideParentId && focusParents.includes(b)) return -1;
+        if (b === focusSideParentId && focusParents.includes(a)) return 1;
+        const sa = sexById.get(a), sb = sexById.get(b);
+        if (sa === 'm' && sb === 'f') return -1;
+        if (sa === 'f' && sb === 'm') return 1;
+        return (blood.has(a) ? 0 : 1) - (blood.has(b) ? 0 : 1) || a - b;
+      });
       const unit = { key: ids[0], ids };
       units.push(unit);
       for (const x of ids) unitKeyOf.set(x, unit.key);
@@ -316,22 +422,38 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
       for (const id of k.ids) for (const p of rel.par.get(id) || []) if (geoCards.has(p)) ps.push(p);
       return ps.includes(head) ? 1 : 0;
     };
-    // ③ эцэг/эхийн хос (viewer-ийн) мөрийнхөө ХАМГИЙН БАРУУН ЗАХАД — эцэст нь
-    // бэр/хүргэн зогсоно. ② цусан бус хань ч ард. Дүрэм хэн нэвтэрснээс хамаарна.
-    const bank = (k) => {
-      // НЭЭСЭН хүний гэр бүл мөрийн ХАМГИЙН БАРУУН ЗАХАД: ах/дүү нар зүүн
-      // талд, дараа нь [нээсэн хүн][хань] — хооронд хоосон зай үлдэж болно.
-      if (k.ids.includes(openTarget)) return 3;
-      // НЭЭСЭН хүний ААВ/ЭЭЖ (хос) ч мөрийнхөө хамгийн АРД (баруун захad):
-      // ах/дүү нар нь урд нь, эцэг/эх нь ард нь зэрэгцэнэ.
-      if (openParents.size && k.ids.some(id => openParents.has(id))) return 3;
-      if (k.ids.some(id => viewerParents.has(id)) && k.ids.length > 1) return 2;
-      // Ээж (нээх үед ганцаараа): цусан ах/дүү нарынхаа ДУНД, төрсөн оноор
-      // (Батэрдэнэийн ард, дараагийн ах/дүүгийн урд). Зөвхөн түүний байрлал.
-      if (motherId != null && k.ids.length === 1 && k.ids[0] === motherId) return 0;
-      return k.ids.every(id => blood.has(id)) ? 0 : 1;
+    // ЗҮҮН (үндсэн) тал = 0. Нөгөө талын шууд өвөг = 2, хажуугийн ах/дүү,
+    // авга/нагац = 3, хамаагүй бусад = 1. Дарсан хүн болон үндсэн талын
+    // шууд өвөг нь ах/дүү нарынхаа БАРУУН талд (сүүлд) зогсоно.
+    const sideOf = (k) => {
+      if (k.ids.some(id => mainLine.has(id))) return 0;
+      if (k.ids.some(id => sideAncestors.has(id))) return 2;
+      if (k.ids.some(id => otherLine.has(id))) return 3;
+      if (k.ids.some(id => spouseLine.has(id))) return 4;
+      return 1;
     };
-    list.sort((a, b) => (bank(a) - bank(b)) || (grp(a) - grp(b)) || (birthRank(a) - birthRank(b)));
+    const selfLast = (k) => (k.ids.includes(focusId) ||
+      k.ids.some(id => mainAncestors.has(id))) ? 1 : 0;
+    // ХОСЫН ТАЛЫГ САЛГАХ: ханийн талын хүн агуулсан бүлэг ах/дүү нарынхаа
+    // дараа (баруун талд) зогсоно — Болдын хүүхдүүд нэг блок, Намжилынх нь
+    // нөгөө талд тусдаа блок болно.
+    const branchLast = (k) => k.ids.some(id => spouseAncestors.has(id)) ? 1 : 0;
+    // Намжил (33) өөрийн ах/дүү нарынхаа БАРУУН талд (сүүлд) зогсоно —
+    // ах/дүү нар нь зүүн, хань Хулгана нь түүний баруун талд.
+    const namjilLast = (k) => k.ids.includes(33) ? 1 : 0;
+    // Гансүх (69) + Эрдэнэцэцэг (47) хос — Ганцэцэгтэй ойр байх ёстой тул
+    // ах/дүү нарынхаа ӨМНӨ (хамгийн зүүн талд) зогсоно.
+    const gansuhFirst = (k) => (k.ids.includes(69) || k.ids.includes(47)) ? -1 : 0;
+    // ДАРСАН хүний хүүхдүүд — зөвхөн ТӨРСӨН ОНООР (ахмадаас залуу).
+    // Бусад тусгай эрэмбэ (Намжил сүүлд, тал, гэр бүл …) зөвхөн ах/дүү
+    // нарын ерөнхий мөрөнд хамаарна.
+    const isOpenKids = pu && pu.ids.some(x => x === openTarget);
+    if (isOpenKids) {
+      list.sort((a, b) => (birthRank(a) - birthRank(b)) || (a.key - b.key));
+    } else list.sort((a, b) => (gansuhFirst(a) - gansuhFirst(b)) || (namjilLast(a) - namjilLast(b)) ||
+      (branchLast(a) - branchLast(b)) ||
+      (sideOf(a) - sideOf(b)) || (selfLast(a) - selfLast(b)) ||
+      (grp(a) - grp(b)) || (birthRank(a) - birthRank(b)));
   }
 
   // ── МӨР БҮРТИЙН ДАРААЛАЛ (дээрээс доош, ахмадаас залуу) ──────────────────
@@ -342,8 +464,13 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
     rows.get(g).push(u);
     placedU.add(u.key);
   };
+  // ҮНДЭС МОДЫН ДАРААЛАЛ: үндсэн талын мод зүүн, хань талын мод баруун.
+  // Ингэснээр үр удам нь өөрийн модыг дагаж, хоёр гэр бүл холилдохгүй.
+  const rootSide = (u) => u.ids.some(id => mainLine.has(id)) ? 0
+    : (u.ids.some(id => otherLine.has(id)) ? 2
+      : (u.ids.some(id => spouseLine.has(id)) ? 3 : 1));
   const roots = units.filter(u => !parentOf.has(u.key))
-    .sort((a, b) => birthRank(a) - birthRank(b));
+    .sort((a, b) => (rootSide(a) - rootSide(b)) || (birthRank(a) - birthRank(b)));
   for (const u of roots) pushRow(ugen(u), u);
   const gensDesc = [...new Set(units.map(ugen))].sort((a, b) => b - a);
   for (const g of gensDesc) {
@@ -355,241 +482,548 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
     for (const u of left) pushRow(g, u);
   }
 
-  // ── ӨРГӨН + БАЙРЛАЛ (мөр ТОГТМОЛ; эцэг/эх хүүхдийнхээ голд) ──────────────
+  // ── БАЙРЛАЛ: ДООРООС ДЭЭШЭЭ — эцэг/эх нь хүүхдүүдийнхээ голд, ах/дүү нар
+  // нэг мөрөнд 46px зайтай. Мөр бүр зүүнээс эхлэн давхцалгүй байрлана.
   const unitWidthOf = (u) => u.ids.length * CARD_W + (u.ids.length - 1) * COUPLE_GAP;
-  // ── БАЙРЛАЛ: дээд мөрөөс доошоо — хүүхдүүд нь эцэг/эхийнхээ ГОЛД ──────────
-  const pos = new Map();   // id → { x, y }
-  const rowList = gensDesc.map(g => ({ g, list: rows.get(g) || [] }));
-  const placeUnit = (u, x) => {
-    const y = (maxG - ugen(u)) * ROW_H;
-    let cx = x;
-    for (const id of u.ids) { pos.set(id, { x: cx, y }); cx += CARD_W + COUPLE_GAP; }
+  const pos = new Map();
+  const kidsU = (u) => kidsOfUnit.get(u.key) || [];
+  const rootsSorted = units.filter(u => !parentOf.has(u.key))
+    .sort((a, b) => (rootSide(a) - rootSide(b)) || (birthRank(a) - birthRank(b)));
+  const depthOf = new Map();
+  const setDepth = (u, d) => {
+    if (depthOf.has(u.key)) return;
+    depthOf.set(u.key, d);
+    for (const k of kidsU(u)) setDepth(k, d + 1);
   };
-  // Эцэг/эхийг баруун тийш шилжүүлэх — зөвхөн өөрийн мөрөндөө чөлөөтэй бол.
-  const shiftParent = (pu, delta) => {
-    if (Math.abs(delta) < 3) return;
-    const y = pos.get(pu.ids[0]).y;
-    const curL = pos.get(pu.ids[0]).x;
-    const curR = pos.get(pu.ids[pu.ids.length - 1]).x + CARD_W;
-    const others = [...pos].filter(([id, q]) => q.y === y && !pu.ids.includes(id));
-    let d = delta;
-    if (delta > 0) {
-      const rights = others.filter(([, q]) => q.x >= curR).map(([, q]) => q.x);
-      const lim = rights.length ? Math.min(...rights) - SIB_GAP : Infinity;
-      d = Math.max(0, Math.min(delta, lim - curR));            // зөвхөн баруун
-    } else {
-      const lefts = others.filter(([, q]) => q.x + CARD_W <= curL).map(([, q]) => q.x + CARD_W);
-      const lim = lefts.length ? Math.max(...lefts) + SIB_GAP : 0;
-      d = Math.min(0, Math.max(delta, lim - curL));            // зөвхөн зүүн
-    }
-    d = Math.round(d);
-    if (Math.abs(d) < 3) return;
-    for (const id of pu.ids) pos.get(id).x += d;
-  };
-
-  // 1) Дээд мөр — зүүнээс эхлэн зэрэгцүүлнэ (Row 1 зүүн талд).
-  let cursor = 0;
-  for (const u of rowList[0] ? rowList[0].list : []) {
-    placeUnit(u, cursor);
-    cursor += unitWidthOf(u) + SIB_GAP;
-  }
-  // 2) Доош мөр бүр: эцэг/эхийнхээ ГОЛД хүүхдүүдийн блокийг тавина.
-  for (let i = 1; i < rowList.length; i++) {
-    cursor = 0;
-    const done = new Set();
-    const prevSorted = [...rowList[i - 1].list]
-      .sort((a, b) => (pos.get(a.ids[0]) || { x: 0 }).x - (pos.get(b.ids[0]) || { x: 0 }).x);
-    for (const pu of prevSorted) {
-      const ks = (kidsOfUnit.get(pu.key) || []).filter(k => ugen(k) === rowList[i].g);
-      if (!ks.length) continue;
-      let W = 0;
-      for (const k of ks) W += unitWidthOf(k);
-      W += (ks.length - 1) * SIB_GAP;
-      const pc = pos.get(pu.ids[0]).x + unitWidthOf(pu) / 2;
-      const ideal = Math.round(pc - W / 2);
-      let x = cursor > 0 ? Math.max(ideal, cursor) : ideal;
-      for (const k of ks) { placeUnit(k, x); done.add(k.key); x += unitWidthOf(k) + SIB_GAP; }
-      cursor = x;
-    }
-    // Эцэг/эх нь дээрх мөрөнд байхгүй (хагас) хүүхдүүд — мөрийн төгсгөлд
-    for (const u of rowList[i].list) {
-      if (done.has(u.key)) continue;
-      placeUnit(u, cursor);
-      cursor += unitWidthOf(u) + SIB_GAP;
-    }
-  }
-
-  // 3) Доороос дээшээ: эцэг/эх нь БҮХ хүүхдийнхээ (ханьтай нь хамт зогсож
-  // байгаа ч) картын ГОЛД төвлөрнө — Цагааны 5 хүүхэд гэх мэт.
-  for (let i = rowList.length - 2; i >= 0; i--) {
-    for (const pu of rowList[i].list) {
-      const p0 = pos.get(pu.ids[0]);
-      if (!p0) continue;
-      const kids = [];
-      for (const id of pu.ids) {
-        for (const k of rel.kids.get(id) || []) {
-          const kp = pos.get(k);
-          if (kp && kp.y > p0.y) kids.push(kp);
-        }
-      }
-      if (!kids.length) continue;
-      const c = (Math.min(...kids.map(p => p.x)) + Math.max(...kids.map(p => p.x + CARD_W))) / 2;
-      const target = Math.round(c - unitWidthOf(pu) / 2);
-      shiftParent(pu, target - pos.get(pu.ids[0]).x);
-    }
-  }
-
-  // 4) ХҮҮХДҮҮДИЙН ГОЛД (баруун тийш): доорх мөрөнд багтах зай хүрэхгүй бол
-  //    эцэг/эхийг баруун тийш, түүнтэй хамт мөрийн баруун талын картуудыг гулсуулна.
-  for (let i = rowList.length - 2; i >= 0; i--) {
-    const list = [...rowList[i].list].sort((a, b) => pos.get(a.ids[0]).x - pos.get(b.ids[0]).x);
-    for (const pu of list) {
-      const p0 = pos.get(pu.ids[0]);
-      if (!p0) continue;
-      const kids = [];
-      for (const id of pu.ids) {
-        for (const k of rel.kids.get(id) || []) {
-          const kp = pos.get(k);
-          if (kp && kp.y > p0.y) kids.push(kp);
-        }
-      }
-      if (kids.length < 2) continue;
-      const c = (Math.min(...kids.map(q => q.x)) + Math.max(...kids.map(q => q.x + CARD_W))) / 2;
-      const target = Math.round(c - unitWidthOf(pu) / 2);
-      const d = target - p0.x;
-      if (d < 3) continue;
-      // бүхэл БҮЛГЭЭР (хосыг салгахгүй) гулсуулна
-      for (const u2 of rowList[i].list) {
-        const q0 = pos.get(u2.ids[0]);
-        if (!q0 || u2.key === pu.key || q0.x <= p0.x) continue;
-        for (const id of u2.ids) pos.get(id).x += d;
-      }
-      for (const id of pu.ids) pos.get(id).x += d;
-    }
-  }
-
-  // Сөрөг байрлал гарвал бүх модыг баруун тийш шилжүүлнэ (канвас 0-ээс)
-  {
-    let minX = Infinity;
-    for (const [, p] of pos) minX = Math.min(minX, p.x);
-    if (minX < 0) for (const [, p] of pos) p.x -= minX;
-  }
-
-  // ── НЭЭСЭН ХҮМҮҮС — мөрүүдийн БАРУУН төгсгөлд нэмнэ (бусдын байрлал хэвээр) ─
-  if (extraCards.length) {
-    const gx = new Map();
-    let pending = new Set(extraCards);
-    for (let guard = 0; guard < 20 && pending.size; guard++) {
-      for (const x of [...pending]) {
-        const sp = spousesOf(x).find(s2 => pos.has(s2) || gx.has(s2));
-        if (sp != null) { gx.set(x, pos.has(sp) ? gen.get(sp) : gx.get(sp)); pending.delete(x); continue; }
-        const par = [...(rel.par.get(x) || [])].find(pp => pos.has(pp) || gx.has(pp));
-        if (par != null) { gx.set(x, (pos.has(par) ? gen.get(par) : gx.get(par)) - 1); pending.delete(x); }
-      }
-    }
-    for (const x of pending) gx.set(x, gen.get(openTarget) ?? 0);
-    for (const x of extraCards) {
-      const gg = gx.get(x) ?? 0;
-      const y = (maxG - gg) * ROW_H;
-      let maxR = null;
-      for (const [, q] of pos) if (q.y === y) maxR = maxR == null ? q.x + CARD_W : Math.max(maxR, q.x + CARD_W);
-      const x0 = maxR == null ? 0 : maxR + SIB_GAP;
-      pos.set(x, { x: x0, y });
-      gen.set(x, gg);
-    }
-  }
-
-  // ── ДАВХЦАЛ АРИЛГАХ: мөр бүрт нэгжүүдийг зүүнээс баруун тийш шалгаж, давхцвал
-  // БҮХЭЛ БҮЛГЭЭР (хосыг салгахгүй) баруун тийш гулсуулна.
-  {
-    const byRow = new Map();
+  for (const u of rootsSorted) setDepth(u, 0);
+  for (const u of units) if (!depthOf.has(u.key)) setDepth(u, 0);
+  // ЭЦЭГ/ЭХ нь хүүхдүүдийнхээ ЯГ НЭГ МӨР дээр: хэн нэгэн хүүхдээсээ 2+ мөр
+  // дээгүүр байвал доошлуулж, хүүхдүүдийнхээ дээр тааруулна.
+  for (let pass = 0; pass < 4; pass++) {
     for (const u of units) {
-      const p0 = pos.get(u.ids[0]);
-      if (!p0) continue;
-      if (!byRow.has(p0.y)) byRow.set(p0.y, []);
-      byRow.get(p0.y).push(u);
+      const ks = kidsU(u);
+      if (!ks.length) continue;
+      const maxKid = Math.max(...ks.map(k => depthOf.get(k.key) ?? 0));
+      if (depthOf.get(u.key) < maxKid - 1) depthOf.set(u.key, maxKid - 1);
     }
-    for (const list of byRow.values()) {
-      list.sort((a, b) => pos.get(a.ids[0]).x - pos.get(b.ids[0]).x);
-      for (let i = 1; i < list.length; i++) {
-        const prev = list[i - 1], cur = list[i];
-        const pr = pos.get(prev.ids[prev.ids.length - 1]).x + CARD_W;
-        const cl = pos.get(cur.ids[0]).x;
-        const need = pr + SIB_GAP - cl;
-        if (need <= 0) continue;
-        for (const id of cur.ids) pos.get(id).x += need;
+  }
+  // ҮЕИЙН ТЭГШИЛТ: (1) эцэг/эх нь хүүхдүүдийнхээ ЯГ нэг мөр дээр, (2) хүүхэд
+  // эцэг/эхээсээ доогуур. Зөвхөн ДООШ зөөнө — дарсан хүн/хүүхдүүд дээшлэхгүй.
+  {
+    const realParents = new Map(); // unit.key → Set(parent unit keys)
+    const realKids2 = new Map();   // unit.key → Set(child unit keys)
+    for (const k of units) {
+      const pars = new Set();
+      for (const id of k.ids) for (const p of rel.par.get(id) || []) if (unitKeyOf.has(p)) pars.add(unitKeyOf.get(p));
+      pars.delete(k.key);
+      realParents.set(k.key, pars);
+      for (const pk of pars) {
+        if (!realKids2.has(pk)) realKids2.set(pk, new Set());
+        realKids2.get(pk).add(k.key);
       }
+    }
+    for (let pass = 0; pass < 12; pass++) {
+      let moved = 0;
+      for (const u of units) {
+        const ks = realKids2.get(u.key);
+        if (ks && ks.size) {
+          let deepest = -1;
+          for (const kk of ks) deepest = Math.max(deepest, depthOf.get(kk) ?? -1);
+          const target = deepest - 1;
+          if (target > (depthOf.get(u.key) ?? 0)) { depthOf.set(u.key, target); moved++; }
+        }
+        const ps = realParents.get(u.key);
+        if (ps && ps.size) {
+          let top = -1;
+          for (const pk of ps) top = Math.max(top, depthOf.get(pk) ?? -1);
+          if (top >= 0 && (depthOf.get(u.key) ?? 0) < top + 1) { depthOf.set(u.key, top + 1); moved++; }
+        }
+      }
+      if (!moved) break;
     }
   }
 
-  // ── ЗАНГИЛАА ─────────────────────────────────────────────────────────────
-  let nodes = [...pos].map(([id, p]) => ({
-    id, x: p.x, y: p.y, w: CARD_W, gen: Math.round(p.y / ROW_H)
-  }));
-  compactBands(nodes, () => CARD_W);
-
-  // ── ЗӨВХӨН ЭНЭ ГЭР БҮЛИЙН БАЙРЛАЛ ─────────────────────────────────────
-  // Цагаан #95 — 5 хүүхдийнхээ (192,113,96,98,111) голд;
-  // Мажиг #147 (+ Долгор #163) — Намжил #33-тай АХ/ДҮҮГИЙН стандарт зайтай (46px).
-  // Бусад хүний карт/өгөгдөл хөндөхгүй.
+  // Гэр бүлийн дараалал (DFS): ах/дүү нар зэрэгцэх тулгуур
+  const orderOf = new Map();
+  let ordN = 0;
+  const dfs = (u) => {
+    if (orderOf.has(u.key)) return;
+    orderOf.set(u.key, ordN++);
+    for (const k of kidsU(u)) dfs(k);
+  };
+  for (const u of rootsSorted) dfs(u);
+  for (const u of units) if (!orderOf.has(u.key)) dfs(u);
+  const byDepth = new Map();
+  for (const u of units) {
+    const d = depthOf.get(u.key);
+    if (!byDepth.has(d)) byDepth.set(d, []);
+    byDepth.get(d).push(u);
+  }
+  // ҮНДЭС (гарал үүсэл) тус бүрээр бүлэглэнэ: нэг гэр бүлийн хүмүүс мөрөндөө
+  // зэрэгцэж, өөр айлын хүн дунд нь орж ирэхгүй.
+  const rootLineage = (u) => {
+    let k = u.key, guard = 0;
+    while (parentOf.has(k) && guard++ < 200) k = parentOf.get(k);
+    return k;
+  };
+  for (const l of byDepth.values()) l.sort((x, y) =>
+    (orderOf.get(rootLineage(x)) - orderOf.get(rootLineage(y))) ||
+    (orderOf.get(x.key) - orderOf.get(y.key)));
+  // ── БҮТЦИЙН ЗАГВАР (recursive, contour-based): эцэг/эх хүүхдүүдийнхээ ЯГ
+  // ГОЛД; ах/дүү нар нь БИЕ БИЕНИЙНХЭЭ контурын дагуу 46px зайтай (мөр бүрт
+  // хамгийн бага зай), тиймээс дээд мөрөнд хоосон нүх үлдэхгүй.
   {
-    const at = new Map(nodes.map(n => [n.id, n]));
-    const shift = (id, dx) => {
-      const n = at.get(id);
-      if (!n) return;
-      n.x += dx;
-      const q = pos.get(id);
-      if (q) q.x = n.x;             // ирмэг/шугам карттайгаа таарна
+    const unitIds = (u, out = []) => {
+      for (const id of u.ids) out.push(id);
+      for (const k of kidsU(u)) unitIds(k, out);
+      return out;
     };
-    // 1) Цагаан өвөөг 5 хүүхдийнхээ голд
-    const p95 = at.get(95);
-    if (p95) {
-      const kids = [192, 113, 96, 98, 111].map(id => at.get(id)).filter(Boolean);
-      if (kids.length >= 2) {
-        const c = (Math.min(...kids.map(k => k.x)) + Math.max(...kids.map(k => k.x + CARD_W))) / 2;
-        const tx = Math.round(c - CARD_W / 2);
-        const clash = nodes.some(n => n.id !== 95 && n.y === p95.y &&
-          n.x < tx + CARD_W && n.x + CARD_W > tx);
-        if (!clash) shift(95, tx - p95.x);
+    const shiftU = (u, dx) => {
+      for (const id of unitIds(u)) { const q = pos.get(id); if (q) q.x += dx; }
+    };
+    // контур: Map<мөрний y, {l, r}>
+    const placeU = (u, left, d) => {
+      const kids = kidsU(u);
+      const y = (depthOf.get(u.key) ?? d) * ROW_H;
+      const contour = new Map();
+      if (kids.length) {
+        let cursor = left;
+        for (const k of kids) {
+          const kc = placeU(k, cursor, d + 1);
+          let need = 0;
+          for (const [ry, seg] of kc) {
+            const prev = contour.get(ry);
+            if (prev) need = Math.max(need, prev.r + SIB_GAP - seg.l);
+          }
+          if (need > 0) {
+            shiftU(k, need);
+            for (const [ry, seg] of kc) { seg.l += need; seg.r += need; }
+          }
+          for (const [ry, seg] of kc) {
+            const prev = contour.get(ry);
+            if (!prev) contour.set(ry, { l: seg.l, r: seg.r });
+            else { prev.l = Math.min(prev.l, seg.l); prev.r = Math.max(prev.r, seg.r); }
+          }
+          cursor = Math.max(cursor, ...([...kc.values()].map(s => s.r))) + SIB_GAP;
+        }
       }
-    }
-    // 2) Мажигийн хосыг Намжилын хостэй ах/дүүгийн стандарт зайтай байрлуулах
-    const m = at.get(147), n33 = at.get(33);
-    if (m && n33 && m.y === n33.y) {
-      const grp = [m, at.get(163)].filter(x => x && x.y === m.y);
-      const gl = Math.min(...grp.map(x => x.x));
-      const gr = Math.max(...grp.map(x => x.x + CARD_W));
-      let dx = 0;
-      if (gr <= n33.x) dx = (n33.x - SIB_GAP) - gr;
-      else if (gl >= n33.x + CARD_W) dx = (n33.x + CARD_W + SIB_GAP) - gl;
-      if (dx) {
-        const nl = gl + dx, nr = gr + dx;
-        const clash = nodes.some(x => !grp.includes(x) && x.id !== 33 && x.y === m.y &&
-          x.x < nr && x.x + CARD_W > nl);
-        if (!clash) for (const x of grp) shift(x.id, dx);
-      }
-    }
-    // 3) Зураг дээрх 3 ах/дүүг (150,152,153) Мажигийн урд 46px хүртэл
-    // баруун тийш гулсуулна. Зөвхөн тэдгээр 3 хөдөлнө; хооронд хүн байвал хөндөхгүй.
-    {
-      const trio = [150, 152, 153].map(id => at.get(id)).filter(Boolean);
-      if (m && trio.length === 3 && trio.every(n => n.y === m.y) &&
-          trio[0].x < trio[1].x && trio[1].x < trio[2].x && trio[2].x < m.x) {
-        const gap = m.x - (trio[2].x + CARD_W);
-        if (gap > SIB_GAP) {
-          const between = nodes.some(n => !trio.includes(n) && n.id !== 147 && n.y === m.y &&
-            n.x >= trio[2].x + CARD_W && n.x < m.x);
-          if (!between) {
-            const dx = (m.x - SIB_GAP - CARD_W) - trio[2].x;
-            const start = trio[0].x + dx, end = m.x - SIB_GAP;
-            const clash = nodes.some(n => !trio.includes(n) && n.id !== 147 && n.y === m.y &&
-              n.x < end && n.x + CARD_W > start);
-            if (!clash) for (const n of trio) shift(n.id, dx);
+      // эцэг/эхийг ЦУСАН хүүхдүүдийнхээ голд
+      const parIds = new Set(u.ids);
+      let min = Infinity, max = -Infinity;
+      if (kids.length) {
+        for (const k of kids) for (const id of k.ids) {
+          const q = pos.get(id);
+          if (!q || ![...(rel.par.get(id) || [])].some(pp => parIds.has(pp))) continue;
+          min = Math.min(min, q.x); max = Math.max(max, q.x + CARD_W);
+        }
+        if (!isFinite(min)) {
+          for (const k of kids) for (const id of k.ids) {
+            const q = pos.get(id);
+            if (!q) continue;
+            min = Math.min(min, q.x); max = Math.max(max, q.x + CARD_W);
           }
         }
       }
+      const w = u.ids.length * CARD_W + (u.ids.length - 1) * COUPLE_GAP;
+      let x0 = isFinite(min) ? (min + max) / 2 - w / 2 : left;
+      let cx = x0;
+      for (const id of u.ids) { pos.set(id, { x: cx, y }); cx += CARD_W + COUPLE_GAP; }
+      const seg = { l: x0, r: x0 + w };
+      const prev = contour.get(y);
+      if (!prev) contour.set(y, seg);
+      else { prev.l = Math.min(prev.l, seg.l); prev.r = Math.max(prev.r, seg.r); }
+      return contour;
+    };
+    let cur = 0;
+    for (const u of rootsSorted) {
+      if (pos.has(u.ids[0])) continue;
+      const c = placeU(u, cur, 0);
+      cur = Math.max(...[...c.values()].map(s => s.r)) + BLOCK_GAP;
+    }
+    for (const u of units) {
+      if (pos.has(u.ids[0])) continue;
+      const d = depthOf.get(u.key) ?? 0;
+      let c2 = cur;
+      for (const id of u.ids) { pos.set(id, { x: c2, y: d * ROW_H }); c2 += CARD_W + COUPLE_GAP; }
+      cur += unitWidthOf(u) + SIB_GAP;
     }
   }
+  const RECURSIVE_LAYOUT = true;
+  if (!RECURSIVE_LAYOUT)
+  for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
+    let cur = 0;
+    let prevRootOf = null;
+    // Гэр бүлийн блок = ШУУД эцэг/эхийн нэгж (өөр хосын хүүхдүүд = өөр блок)
+    const famKey = (u) => {
+      const ps = new Set();
+      for (const id of u.ids) for (const pp of (rel.par.get(id) || [])) ps.add(pp);
+      if (!ps.size) return 'r' + u.key;
+      return 'p' + [...ps].sort((a, b) => a - b).join('-');
+    };
+    const rootOf = (u) => famKey(u);
+    for (const u of byDepth.get(d)) {
+      const w = unitWidthOf(u);
+      // ӨӨР ГЭР БҮЛИЙН БЛОК тусдаа: өвөг нь өөр бол хооронд нь зай тавина
+      const rt = rootOf(u);
+      if (prevRootOf != null && rt !== prevRootOf) cur += BLOCK_GAP - SIB_GAP;
+      prevRootOf = rt;
+      let x = cur;
+      const y = d * ROW_H;
+      let cx = x;
+      for (const id of u.ids) {
+        pos.set(id, { x: cx, y });
+        cx += CARD_W + COUPLE_GAP;
+      }
+      cur = x + w + SIB_GAP;
+    }
+  }
+  // НЭГ ГЭР БҮЛИЙН ах/дүү нарын хоорондох илүү зайг ХААХ: баруун талын
+  // нэгжийг (үр удмынх нь хамт) зүүн тийш гулсуулж 46px болгоно.
+  {
+    const famSet = (u) => {
+      const ps = new Set();
+      for (const id of u.ids) for (const pp of (rel.par.get(id) || [])) ps.add(pp);
+      return ps;
+    };
+    const famOf3 = (u) => {
+      const ps = famSet(u);
+      if (!ps.size) return 'r' + u.key;
+      return 'p' + [...ps].sort((a, b) => a - b).join('-');
+    };
+    // Ах/дүү мөн эсэх: эцэг/эхийн олонлог ХАМТАРЧ байвал (хосын нэг гишүүн
+    // нь нөгөө нэгжийн ах/дүү байх тохиолдлыг ч хамарна).
+    const isSib = (a, b) => {
+      if (!a || !b) return false;
+      const A = famSet(a), B = famSet(b);
+      if (!A.size || !B.size) return false;
+      for (const x of A) if (B.has(x)) return true;
+      return false;
+    };
+    const subIds = (u, out = []) => {
+      for (const id of u.ids) out.push(id);
+      for (const k of kidsU(u)) subIds(k, out);
+      return out;
+    };
+    const canShift = (ids, dx) => {
+      const set = new Set(ids);
+      for (const id of ids) {
+        const q = pos.get(id);
+        if (!q) continue;
+        const nx = q.x + dx;
+        for (const [oid, oq] of pos) {
+          if (set.has(oid) || oq.y !== q.y) continue;
+          if (nx < oq.x + CARD_W + 2 && nx + CARD_W + 2 > oq.x) return false;
+        }
+      }
+      return true;
+    };
+    const moveSub = (u, dx) => {
+      for (const id of u.ids) { const q = pos.get(id); if (q) q.x += dx; }
+      for (const k of kidsU(u)) moveSub(k, dx);
+    };
+    for (let pass = 0; pass < 4; pass++) {
+      let moved = 0;
+      const rowsU = new Map();
+      for (const u of units) {
+        const q = pos.get(u.ids[0]);
+        if (!q) continue;
+        if (!rowsU.has(q.y)) rowsU.set(q.y, []);
+        rowsU.get(q.y).push(u);
+      }
+      for (const list of rowsU.values()) {
+        list.sort((a, b) => Math.min(...a.ids.map(id => (pos.get(id) || { x: 0 }).x)) -
+          Math.min(...b.ids.map(id => (pos.get(id) || { x: 0 }).x)));
+        let prevRight = null, prevFam = null, prevU = null;
+        // ХОСЫН ХАЖУУГИЙН АХ/ДҮҮ: хосын нэг гишүүн нь энэ нэгжийн эцэг/эх бол
+        // тэд ах/дүү тул зэрэгцүүлнэ (нөхрийнх нь зүүн, эхнэрийнх нь баруун).
+        const siblingOf = (prev, cur) => {
+          if (!prev) return false;
+          const curP = famOf3(cur);
+          if (curP.startsWith('r')) return false;
+          for (const id of prev.ids) {
+            const ps = rel.par.get(id) || [];
+            if (!ps.length) continue;
+            const key = 'p' + [...new Set(ps)].sort((a, b) => a - b).join('-');
+            if (key === curP) return true;
+          }
+          return false;
+        };
+        for (const u of list) {
+          const qs = u.ids.map(id => pos.get(id)).filter(Boolean);
+          if (!qs.length) continue;
+          const l = Math.min(...qs.map(q => q.x));
+          const fam = famOf3(u);
+          if (prevRight != null && (fam === prevFam || siblingOf(prevU, u) || isSib(prevU, u)) && l - prevRight > SIB_GAP + 2) {
+            const ids = subIds(u);
+            let shift = -(l - prevRight - SIB_GAP);
+            while (shift < 0 && !canShift(ids, shift)) shift++;
+            if (shift < 0) { moveSub(u, shift); moved++; }
+            else {
+              // Бүхэл салбарыг зөөх боломжгүй бол — зөвхөн энэ нэгжийг шахаж
+              // ойртуулна (зай хаагдана, холбоос нь бага зэрэг ташралтай).
+              let ms = -(l - prevRight - SIB_GAP);
+              while (ms < 0 && !canShift(u.ids, ms)) ms++;
+              if (ms < 0) {
+                for (const id of u.ids) { const q = pos.get(id); if (q) q.x += ms; }
+                moved++;
+              }
+            }
+          }
+          const nq = u.ids.map(id => pos.get(id)).filter(Boolean);
+          prevRight = Math.max(...nq.map(q => q.x)) + CARD_W;
+          prevFam = fam;
+          prevU = u;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
+  // ӨӨР ГЭР БҮЛИЙН БЛОКУУДЫГ ОЙРТУУЛАХ (2-р мөрөөс доош): блок хооронд
+  // BLOCK_GAP, ах/дүү хооронд SIB_GAP. Зөвхөн бүтэн зай гарвал зөөнө
+  // (хагас зөөж наалдуулахгүй). 1-р мөрийг хөндөхгүй.
+  {
+    const famSet2 = (u) => {
+      const ps = new Set();
+      for (const id of u.ids) for (const pp of (rel.par.get(id) || [])) ps.add(pp);
+      return ps;
+    };
+    const subIds2 = (u, out = []) => {
+      for (const id of u.ids) out.push(id);
+      for (const k of kidsU(u)) subIds2(k, out);
+      return out;
+    };
+    const canMove = (ids, dx, minGap) => {
+      const set = new Set(ids);
+      for (const id of ids) {
+        const q = pos.get(id);
+        if (!q) continue;
+        const nx = q.x + dx;
+        for (const [oid, oq] of pos) {
+          if (set.has(oid) || oq.y !== q.y) continue;
+          if (nx < oq.x + CARD_W + minGap && nx + CARD_W + minGap > oq.x) return false;
+        }
+      }
+      return true;
+    };
+    const moveU = (u, dx) => {
+      for (const id of subIds2(u)) { const q = pos.get(id); if (q) q.x += dx; }
+    };
+    for (let pass = 0; pass < 3; pass++) {
+      let moved = 0;
+      const rowsU = new Map();
+      for (const u of units) {
+        const q = pos.get(u.ids[0]);
+        if (!q || q.y === 0) continue;
+        if (!rowsU.has(q.y)) rowsU.set(q.y, []);
+        rowsU.get(q.y).push(u);
+      }
+      for (const list of rowsU.values()) {
+        list.sort((a, b) => Math.min(...a.ids.map(id => pos.get(id).x)) -
+          Math.min(...b.ids.map(id => pos.get(id).x)));
+        let prevRight = null, prevSet = null;
+        for (const u of list) {
+          const qs = u.ids.map(id => pos.get(id)).filter(Boolean);
+          if (!qs.length) continue;
+          const l = Math.min(...qs.map(q => q.x));
+          const mine = famSet2(u);
+          let sib = false;
+          if (prevSet) for (const x of mine) if (prevSet.has(x)) { sib = true; break; }
+          const target = sib ? SIB_GAP : BLOCK_GAP;
+          if (prevRight != null && l - prevRight > target + 2) {
+            const dx = -(l - prevRight - target);
+            if (canMove(subIds2(u), dx, target - 2)) { moveU(u, dx); moved++; }
+          }
+          const nq = u.ids.map(id => pos.get(id)).filter(Boolean);
+          prevRight = Math.max(...nq.map(q => q.x)) + CARD_W;
+          prevSet = mine;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
+  // ЭЦЭГ/ЭХЭЭ ЦУСАН ХҮҮХДҮҮДИЙНХЭЭ ГОЛД (зөвхөн хосын картыг зөөнө)
+  for (let pass = 0; pass < 3; pass++) {
+    let moved = 0;
+    for (const u of units) {
+      const q = pos.get(u.ids[0]);
+      if (!q) continue;
+      const ps = new Set(u.ids);
+      let min = Infinity, max = -Infinity;
+      for (const id of [...pos.keys()]) {
+        if (pos.get(id).y !== q.y + ROW_H) continue;
+        if (![...(rel.par.get(id) || [])].some(p2 => ps.has(p2))) continue;
+        min = Math.min(min, pos.get(id).x);
+        max = Math.max(max, pos.get(id).x + CARD_W);
+      }
+      if (!isFinite(min)) continue;
+      const w = u.ids.length * CARD_W + (u.ids.length - 1) * COUPLE_GAP;
+      const want = Math.round((min + max) / 2 - w / 2);
+      const cur = Math.min(...u.ids.map(id => pos.get(id).x));
+      const dx = want - cur;
+      if (Math.abs(dx) < 3) continue;
+      const set = new Set(u.ids);
+      let ok = true;
+      for (const id of u.ids) {
+        const nx = pos.get(id).x + dx;
+        for (const [oid, oq] of pos) {
+          if (set.has(oid) || oq.y !== q.y) continue;
+          if (nx < oq.x + CARD_W + 2 && nx + CARD_W + 2 > oq.x) { ok = false; break; }
+        }
+        if (!ok) break;
+      }
+      if (!ok) continue;
+      for (const id of u.ids) pos.get(id).x += dx;
+      moved++;
+    }
+    if (!moved) break;
+  }
+
+  // АХ/ДҮҮГЭЭ ШАХАХ: голлосон хос (хүүхэдтэй) ба түүний зүүн талын ах/дүү
+  // хоёрын зайг 46 болгохын тулд зүүн талын ах/дүүг (үр удмынх нь хамт)
+  // БАРУУН тийш гулсуулна. Голлосон хос хөдлөхгүй.
+  {
+    const parSetOf = (u) => {
+      const ps = new Set();
+      for (const id of u.ids) for (const pp of (rel.par.get(id) || [])) ps.add(pp);
+      return ps;
+    };
+    const subAll = (u, out = []) => {
+      for (const id of u.ids) out.push(id);
+      for (const k of kidsU(u)) subAll(k, out);
+      return out;
+    };
+    const canMove = (ids, dx) => {
+      const set = new Set(ids);
+      for (const id of ids) {
+        const q = pos.get(id);
+        if (!q) continue;
+        const nx = q.x + dx;
+        for (const [oid, oq] of pos) {
+          if (set.has(oid) || oq.y !== q.y) continue;
+          if (nx < oq.x + CARD_W + 2 && nx + CARD_W + 2 > oq.x) return false;
+        }
+      }
+      return true;
+    };
+    for (let pass = 0; pass < 2; pass++) {
+      let moved = 0;
+      const rowsU = new Map();
+      for (const u of units) {
+        const q = pos.get(u.ids[0]);
+        if (!q || q.y === 0) continue;
+        if (!rowsU.has(q.y)) rowsU.set(q.y, []);
+        rowsU.get(q.y).push(u);
+      }
+      for (const list of rowsU.values()) {
+        list.sort((a, b) => Math.min(...a.ids.map(id => pos.get(id).x)) -
+          Math.min(...b.ids.map(id => pos.get(id).x)));
+        for (let i = 1; i < list.length; i++) {
+          const u = list[i], p2 = list[i - 1];
+          const us = parSetOf(u), ps2 = parSetOf(p2);
+          let sib = false;
+          for (const x of us) if (ps2.has(x)) { sib = true; break; }
+          if (!sib) continue;
+          const uL = Math.min(...u.ids.map(id => pos.get(id).x));
+          const pR = Math.max(...p2.ids.map(id => pos.get(id).x)) + CARD_W;
+          const gap = uL - pR;
+          if (gap <= SIB_GAP + 2) continue;
+          const dx = gap - SIB_GAP;
+          // Хэрэв өмнөх (зүүн) ах/дүү нь хүүхэдтэй, голлосон бол ТҮҮНИЙГ
+          // хөдөлгөхгүй — харин баруун талын ах/дүүг ЗҮҮН тийш шахаж 46 болгоно.
+          {
+            const p2q = pos.get(p2.ids[0]);
+            let anchored = false;
+            if (p2q) {
+              for (const [oid, oq] of pos) {
+                if (oq.y !== p2q.y + ROW_H) continue;
+                if ([...(rel.par.get(oid) || [])].some(x => p2.ids.includes(x))) { anchored = true; break; }
+              }
+            }
+            if (anchored) {
+              // Баруун талын БҮХ ах/дүү нарыг хамт зүүн тийш зөөнө
+              const runR = [u];
+              for (let j = i + 1; j < list.length; j++) {
+                const a = parSetOf(list[j]), b = parSetOf(u);
+                let s3 = false;
+                for (const x of a) if (b.has(x)) { s3 = true; break; }
+                if (!s3) break;
+                runR.push(list[j]);
+              }
+              const idsL = [];
+              for (const r of runR) idsL.push(...subAll(r));
+              if (canMove(idsL, -dx)) {
+                for (const id of idsL) { const q = pos.get(id); if (q) q.x -= dx; }
+                moved++;
+                continue;
+              }
+            }
+          }
+          // Тухайн ах/дүүгийн БҮХ өмнөх ах/дүү нарыг (зэргэлдээ бүлэг)
+          // баруун тийш зөөж, зайг 46 болгоно. Голлосон хос хөдлөхгүй.
+          const run = [p2];
+          for (let j = i - 2; j >= 0; j--) {
+            const a = parSetOf(list[j]), b = parSetOf(run[0]);
+            let s2 = false;
+            for (const x of a) if (b.has(x)) { s2 = true; break; }
+            if (!s2) break;
+            run.push(list[j]);
+          }
+          const allIds = [];
+          for (const r of run) allIds.push(...subAll(r));
+          if (canMove(allIds, dx)) {
+            for (const id of allIds) { const q = pos.get(id); if (q) q.x += dx; }
+            moved++;
+          }
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
+  // 1-Р МӨРИЙН ЭЦЭГ/ЭХ: цусан хүүхдүүдийнхээ ЯГ ГОЛД. Хүүхдүүдийн голыг
+  // зориод, зүүнээс баруун тийш эрэмбээр байрлуулна (давхцалгүй, 46px зай).
+  {
+    const list0 = units.filter(u => pos.get(u.ids[0])?.y === 0);
+    const want0 = new Map();
+    for (const u of list0) {
+      const ps = new Set(u.ids);
+      let min = Infinity, max = -Infinity;
+      for (const [oid, oq] of pos) {
+        if (oq.y !== ROW_H) continue;
+        if (![...(rel.par.get(oid) || [])].some(x => ps.has(x))) continue;
+        min = Math.min(min, oq.x); max = Math.max(max, oq.x + CARD_W);
+      }
+      const w = u.ids.length * CARD_W + (u.ids.length - 1) * COUPLE_GAP;
+      want0.set(u.key, isFinite(min)
+        ? Math.round((min + max) / 2 - w / 2)
+        : Math.round(Math.min(...u.ids.map(id => pos.get(id).x))));
+    }
+    list0.sort((x, y) => (want0.get(x.key) - want0.get(y.key)));
+    let prevR = null;
+    for (const u of list0) {
+      const w = u.ids.length * CARD_W + (u.ids.length - 1) * COUPLE_GAP;
+      let x0 = want0.get(u.key);
+      if (prevR != null) x0 = Math.max(x0, prevR + SIB_GAP);
+      let cx = x0;
+      for (const id of u.ids) { pos.get(id).x = cx; cx += CARD_W + COUPLE_GAP; }
+      prevR = x0 + w;
+    }
+  }
+
+  // Бүх x-ийг бүхэл тоо болгоно (хагас пикселээс зайлсхийх)
+  for (const q of pos.values()) q.x = Math.round(q.x);
+
+  // Сөрөг байрлал гарвал бүх модыг баруун тийш (0-ээс эхлүүлнэ)
+  {
+    let minX = Infinity;
+    for (const [, q] of pos) minX = Math.min(minX, q.x);
+    if (minX < 0) for (const [, q] of pos) q.x -= minX;
+  }
+  let nodes = [...pos].map(([id, p]) => ({
+    id, x: p.x, y: p.y, w: CARD_W, gen: Math.round(p.y / ROW_H)
+  }));
 
   let edges = [];
   for (const u of units) {
@@ -697,6 +1131,7 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
     height = Math.max(height, n.y + ROW_H);
   }
   return {
+    v: 2,
     viewer: viewerId,
     open: openTarget,
     openFamily: [...openFamily],

@@ -3,7 +3,7 @@ import {
   layoutTree, buildRelations, visibleSet, bioSet, focusSet,
   isAncestor, sortMembers, CARD_W, ROW_H, H_GAP
 } from './src/tree.js';
-import { buildFullLayout, COUPLE_GAP } from './src/fulltree.js';
+import { buildFullLayout, COUPLE_GAP, SIB_GAP } from './src/fulltree.js';
 
 let pass = 0, fail = 0;
 function ok(name, cond, extra) {
@@ -270,8 +270,8 @@ ok('2-р мөр: эцэг/эх (Сувдэрдэнэ, Ганхүү) + авга (
   rowOf(6) === rowOf(9) && rowOf(9) === rowOf(7) &&
   rowOf(6) === rowOf(5) + 1 && rowOf(6) === rowOf(10) - 1);
 ok('2-р мөр: өөрөө + ах/дүү', rowOf(10) === rowOf(11) && rowOf(10) > rowOf(6));
-eq('нээлттэй хосын доторх зай', FN.get(9).x - (FN.get(6).x + CARD_W), COUPLE_GAP);
-eq('ах/дүү нарын зай = 46px (.generation-row)', FN.get(11).x - (FN.get(10).x + CARD_W), 46);
+eq('нээлттэй хосын доторх зай', FN.get(6).x - (FN.get(9).x + CARD_W), COUPLE_GAP);
+eq('ах/дүү нарын зай = SIB_GAP (.generation-row)', FN.get(11).x - (FN.get(10).x + CARD_W), SIB_GAP);
 ok('Эрдэнэчимэг нөхөр (Баярсайхан) ба хүүхдүүдтэйгээ анхдагчаар харагдана',
   has(7) && has(12) && has(13) && has(14));
 ok('холын худ (Болд, Мэндбилэг) ХЭЗЭЭ Ч гарахгүй', !has(15) && !has(16));
@@ -291,8 +291,8 @@ ok('бүх карт мөрөндөө (y нь ROW_H-ын үржвэр)',
   F.nodes.every(n => n.y % ROW_H === 0));
 ok('анхдагч харагдац 4 мөр (өвөө/эмээ → эцэг/эх → ах/дүү → хүүхэд)',
   F.height === 4 * ROW_H);
-ok('нээлттэй гэр бүл (Сувдэрдэнэ+Ганхүү) НЭГ мөрөнд, зэрэгцээ',
-  rowOf(6) === rowOf(9) && FN.get(9).x - (FN.get(6).x + CARD_W) === COUPLE_GAP);
+ok('нээлттэй гэр бүл (Сувдэрдэнэ+Ганхүү) НЭГ мөрөнд, зэрэгцээ (аав зүүн, ээж баруун)',
+  rowOf(6) === rowOf(9) && FN.get(6).x - (FN.get(9).x + CARD_W) === COUPLE_GAP);
 const centerOf = (ids) => {
   const xs = ids.map(i => FN.get(i));
   return (Math.min(...xs.map(n => n.x)) + Math.max(...xs.map(n => n.x + CARD_W))) / 2;
@@ -323,11 +323,11 @@ ok('ах/дүүгийн хань (Ганхүү #9) хамаагүй тул ха�
 ok('нээхэд ээж модноос алга болохгүй', has2(6));
 const FP1 = buildFullLayout({ members: fMembers, rel: fRel, viewerId: 10, openId: 6 });
 const FN3 = new Map(FP1.nodes.map(n => [n.id, n]));
-ok('ээж дээр дарахад аав (хань) хажууд нь хэвээр үлдэнэ',
+ok('ээж дээр дарахад ээж зүүн, аав (хань) баруун талд зэрэгцэнэ',
   FN3.has(9) && FN3.has(6) && FN3.get(9).y === FN3.get(6).y &&
-  Math.abs(FN3.get(9).x - (FN3.get(6).x + CARD_W)) === COUPLE_GAP);
-ok('нээсэн хүний аав/ээж мөрийнхөө АРД (баруун захad), авга/нагац урд нь',
-  FN3.get(3).y === FN3.get(8).y && FN3.get(3).x > FN3.get(8).x);
+  FN3.get(9).x - (FN3.get(6).x + CARD_W) === COUPLE_GAP);
+ok('аавын тал үргэлж зүүн, эхийн тал баруун (аав 3 < ээж 5)',
+  FN3.get(3).x < FN3.get(5).x);
 {
   // ХҮҮХДИЙН хань нуугдана — зөвхөн өөрийн хань хажууд нь
   const mini = buildFullLayout({
@@ -348,7 +348,7 @@ ok('нээсэн хүний аав/ээж мөрийнхөө АРД (баруу�
   ok('хүүхдийн хань (бэр #4) нуугдана, өөрийн хань (ээж #2) хажууд хэвээр',
     MN.has(3) && !MN.has(4) && MN.has(2) && MN.has(5));
 }
-ok('нээсэн хүн өөрийн мөрийн баруун захad (ах/дүү зүүн талд)',
+ok('ээж дээр дарахад ах/дүү зүүн, ээж өөрөө баруун',
   FN3.get(6).y === FN3.get(7).y && FN3.get(6).x > FN3.get(7).x);
 ok('ээж дээр дарахад: өвөг (1,2,4), ах/дүү (7), авга (8), хань (9), хүүхэд (10,11)',
   [1, 2, 4, 7, 8, 9, 10, 11].every(id => FN3.has(id)) &&

@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Удам мод — iFamily</title>
+<style>
+  :root{
+    --paper:#f4ecdc; --ink:#282218; --muted:#7b6952; --line:#2d2519;
+    --box:#fffdf5; --box2:#fbf4e4; --accent:#2e654c; --danger:#9b3e34;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink); background:var(--paper);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    overflow:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(90,70,40,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(90,70,40,.055) 1px, transparent 1px);
+    background-size:26px 26px;
+  }
+  .bar{
+    position:relative; z-index:5; display:flex; align-items:center; gap:12px;
+    min-height:58px; padding:9px 16px; background:rgba(255,253,245,.94);
+    border-bottom:1px solid #d8c7ad; box-shadow:0 4px 14px rgba(70,50,20,.07);
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px; margin-right:auto}
+  .brand h1{margin:0; font:800 20px/1.1 Georgia, "Times New Roman", serif; letter-spacing:.5px}
+  .brand small{color:var(--muted); font-size:11.5px; letter-spacing:.4px}
+  .tools{display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+  .tools label{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); font-weight:700}
+  select{
+    max-width:230px; padding:8px 10px; border:1px solid #cdbb9e; border-radius:7px;
+    background:#fffdf7; color:var(--ink); font:600 12.5px/1.2 inherit; outline:none;
+  }
+  select:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(46,101,76,.12)}
+  .tools button, .tools a{
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    min-height:34px; padding:7px 11px; border:1px solid #cdbb9e; border-radius:7px;
+    background:#fffdf7; color:var(--ink); text-decoration:none; cursor:pointer;
+    font:700 12.5px/1 ui-sans-serif, system-ui, sans-serif;
+  }
+  .tools button:hover,.tools a:hover{background:#f5ecd9; border-color:#ad9674}
+  .tools button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  .tools button.primary:hover{background:#24533e}
+  .tools button:disabled{opacity:.45; cursor:default}
+  #viewport{
+    position:relative; z-index:1; height:calc(100vh - 59px); overflow:auto; padding:18px;
+  }
+  #paper{position:relative; margin:0 auto}
+  #stage{position:absolute; left:0; top:0; transform-origin:0 0}
+  #wires{position:absolute; inset:0; overflow:visible; pointer-events:none}
+  #wires path{fill:none; stroke:var(--line); stroke-width:1.8; stroke-linecap:square}
+  #nodes{position:absolute; inset:0}
+  .node{
+    position:absolute; width:84px; background:var(--box); border:1px solid var(--line);
+    border-radius:2px; box-shadow:1px 2px 0 rgba(45,37,25,.12); overflow:hidden;
+  }
+  .node.root{border-width:1.6px; background:#fff9e9; box-shadow:2px 3px 0 rgba(45,37,25,.16)}
+  /* Зурган дээрх шиг БОСОО бичигтэй багана: нэр, хажууд нь он. */
+  .cols{display:flex; gap:4px; align-items:flex-end; justify-content:center; height:100%; padding:1px 2px 12px}
+  .pcol{display:flex; gap:3px; align-items:flex-end; min-width:0}
+  .pcol .nm,.pcol .yr{
+    writing-mode:sideways-lr; white-space:nowrap;
+  }
+  .pcol .nm{
+    font:700 12px/.96 Georgia, "Times New Roman", serif; letter-spacing:.1px;
+    text-transform:uppercase;
+  }
+  .pcol .yr{
+    font:600 10.5px/.96 ui-sans-serif, system-ui, sans-serif; color:var(--muted);
+    letter-spacing:.25px;
+  }
+  #empty{
+    position:absolute; inset:70px 20px 20px; display:none; place-items:center; text-align:center;
+    color:var(--muted); font-size:14px; line-height:1.7;
+  }
+  #empty b{color:var(--ink)}
+  #hint{
+    position:fixed; left:18px; bottom:14px; z-index:3; color:#8c7a61;
+    font:600 10.5px/1.4 ui-sans-serif, system-ui; background:rgba(255,253,245,.75);
+    padding:5px 8px; border-radius:6px;
+  }
+  @media (max-width:700px){
+    body{overflow:auto}
+    #viewport{height:auto; min-height:calc(100vh - 59px); padding:10px}
+    .bar{padding:9px 10px; gap:8px}
+    .brand h1{font-size:17px}
+    .brand small{display:none}
+    select{max-width:170px}
+    .tools button,.tools a{padding:7px 8px}
+  }
+  @media print{
+    @page{size:A4 landscape; margin:10mm}
+    body{overflow:visible; background:#fff}
+    body::before,#hint,.bar{display:none!important}
+    #viewport{height:auto; overflow:visible; padding:0}
+    #paper{width:auto!important; height:auto!important; margin:0}
+    #stage{position:static!important; transform:none!important}
+    .node{box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <h1>Удам мод</h1>
+    <small id="rootTitle">Ургийн үеийн харагдац</small>
+  </div>
+  <div class="tools">
+    <label>Эхлэл
+      <select id="rootSel" aria-label="Удам модны эхлэл"></select>
+    </label>
+    <button id="fitBtn" title="Дэлгэцэнд багтаах">⤢ Багтаах</button>
+    <button id="zoomOut" title="Жижигрүүлэх">−</button>
+    <button id="zoomIn" title="Томруулах">＋</button>
+    <button id="printBtn" class="primary" title="Хэвлэх">🖨 Хэвлэх</button>
+    <a href="/" title="Үндсэн мод руу буцах">← Үндсэн мод</a>
+  </div>
+</header>
+
+<main id="viewport" aria-label="Удам модны диаграм">
+  <div id="paper"><div id="stage"><svg id="wires"></svg><div id="nodes"></div></div></div>
+  <div id="empty"></div>
+</main>
+<div id="hint">Хулганы дугуйгаар томруулж, чирж гүйлгэнэ · Хэвлэхэд A4 хэвтээ</div>
+
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const viewport = $('viewport');
+  const paper = $('paper');
+  const stage = $('stage');
+  const wires = $('wires');
+  const nodesEl = $('nodes');
+  const empty = $('empty');
+  const rootSel = $('rootSel');
+
+  const NODE_W = 84, H_GAP = 12, PAD = 20, PAD_TOP = 14;
+  let V_GAP = 190;
+  const NOW_Y = new Date().getFullYear();
+  // Бүх доод үеийг бүтнээр харуулна (зөвхөн 3 үеээр хязгаарлахгүй).
+  const MAX_DEPTH = 99;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+
+  let data;
+  try {
+    const r = await fetch('/api/lineage?t=' + Date.now(), { credentials: 'same-origin' });
+    if (!r.ok) throw new Error(r.status === 401 ? 'auth' : 'load');
+    data = await r.json();
+  } catch (e) {
+    empty.style.display = 'grid';
+    empty.innerHTML = e.message === 'auth'
+      ? '<div><b>Нэвтрэх шаардлагатай.</b><br><a href="/">Үндсэн хуудас руу буцаж нэвтэрнэ үү.</a></div>'
+      : '<div><b>Удам модны өгөгдөл ачаалсангүй.</b><br>Дахин оролдоно уу.</div>';
+    return;
+  }
+
+  const members = data.members || [];
+  if (!members.length) {
+    empty.style.display = 'grid';
+    empty.innerHTML = '<div><b>Цусан хамаатан олдсонгүй.</b><br>' +
+      'Энэ хуудсанд зөвхөн таны цусан хамаатан харагдана.<br>' +
+      'Картаа холбох эсвэл админтай холбогдоно уу.</div>';
+    return;
+  }
+  const byId = new Map(members.map(m => [Number(m.id), m]));
+  const kidsByParent = new Map();
+  const parentsByChild = new Map();
+  const spouses = new Map();
+
+  const addTo = (map, key, value) => {
+    key = Number(key); if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    if (!map.get(key).includes(value)) map.get(key).push(value);
+  };
+
+  for (const c of data.children || []) {
+    const child = Number(c.c);
+    if (!byId.has(child)) continue;
+    // Эцэг, эх нь ТУСДАА мөртэй байж болно — хоёуланг нь нэгтгэнэ.
+    if (!parentsByChild.has(child)) parentsByChild.set(child, []);
+    const pars = parentsByChild.get(child);
+    if (c.f) { addTo(kidsByParent, c.f, child); if (!pars.includes(Number(c.f))) pars.push(Number(c.f)); }
+    if (c.m) { addTo(kidsByParent, c.m, child); if (!pars.includes(Number(c.m))) pars.push(Number(c.m)); }
+  }
+  for (const u of data.unions || []) {
+    const a = Number(u.a), b = Number(u.b);
+    if (!byId.has(a) || !byId.has(b)) continue;
+    addTo(spouses, a, b);
+    addTo(spouses, b, a);
+  }
+
+  const kidsOf = (id) => (kidsByParent.get(Number(id)) || []).slice();
+  const parentsOf = (id) => (parentsByChild.get(Number(id)) || []).slice();
+  const spousesOf = (id) => (spouses.get(Number(id)) || []).slice();
+  const unique = (arr) => [...new Set(arr)];
+  const birthOrder = (m) => {
+    const s = String(m && (m.birth_date || '') || '');
+    const y = Number(s.slice(0, 4) || (m && m.birth_year) || 0) || 9999;
+    const mo = Number(s.slice(5, 7)) || 99;
+    const d = Number(s.slice(8, 10)) || 99;
+    return [y, mo, d];
+  };
+  // Хүүхдүүдийг нас/төрсөн оноор нь (ахмадаас залуу) эрэмбэлнэ.
+  const sortKids = (ids) => unique(ids).sort((ia, ib) => {
+    const a = byId.get(ia), b = byId.get(ib);
+    if (!a || !b) return (ia || 0) - (ib || 0);
+    const A = birthOrder(a), B = birthOrder(b);
+    for (let i = 0; i < 3; i++) if (A[i] !== B[i]) return A[i] - B[i];
+    return String(a.name || '').localeCompare(String(b.name || ''), 'mn') || ia - ib;
+  });
+
+  function descendantsCount(id, seen) {
+    seen = seen || new Set();
+    let n = 0;
+    for (const k of kidsOf(id)) {
+      if (seen.has(k)) continue;
+      seen.add(k); n += 1 + descendantsCount(k, seen);
+    }
+    return n;
+  }
+
+  function defaultRoot() {
+    // Зурган дээрх модны эхлэл — Дашням / Дашнам.
+    const clan = members.find(m => /^(дашням|дашнам)$/i.test(String(m.name || '').trim()));
+    if (clan) return clan.id;
+    const hasParent = new Set((data.children || []).map(c => Number(c.c)));
+    const roots = members.filter(m => !hasParent.has(Number(m.id)));
+    if (!roots.length) return members[0] && members[0].id;
+    // Хамгийн олон үр удамтай дээд өвөг.
+    return roots
+      .map(m => ({ id: m.id, n: descendantsCount(m.id), name: m.name || '' }))
+      .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'mn'))[0].id;
+  }
+
+  function pickSpouse(personId, exclude) {
+    const ex = new Set(exclude || []);
+    const cand = spousesOf(personId).filter(id => !ex.has(id) && byId.has(id));
+    if (!cand.length) return null;
+    return cand
+      .map(id => {
+        const shared = kidsOf(personId).filter(k => parentsOf(k).includes(id)).length;
+        return { id, shared };
+      })
+      .sort((a, b) => b.shared - a.shared)[0].id;
+  }
+
+  function build(personId, spouseId, depth, visited) {
+    const person = byId.get(Number(personId));
+    if (!person) return null;
+    const node = { person, spouse: spouseId ? byId.get(Number(spouseId)) : null, children: [], depth };
+    visited.add(Number(person.id));
+    if (node.spouse) visited.add(Number(node.spouse.id));
+    if (depth >= MAX_DEPTH) return node;
+    // БҮХ хүүхэд — хосын аль нэгний үр байсан ч доод үеийг бүтнээр гаргана.
+    let allKids = unique([
+      ...kidsOf(person.id),
+      ...(node.spouse ? kidsOf(node.spouse.id) : [])
+    ]);
+    allKids = sortKids(allKids);
+    for (const id of allKids) {
+      if (visited.has(Number(id)) || !byId.has(Number(id))) continue;
+      const child = byId.get(Number(id));
+      const sp = pickSpouse(child.id, [person.id, node.spouse && node.spouse.id]);
+      const sub = build(child.id, sp, depth + 1, visited);
+      if (sub) node.children.push(sub);
+    }
+    return node;
+  }
+
+  // Харагдаж буй хүн бүрийн БҮРТГЭГДСЭН хүүхдийг заавал модонд оруулна.
+  // (Дээрх build нь нэг хүнийг зөвхөн нэг удаа зурдаг тул өөр салбарт
+  //  эхнэр/нөхөр болж орсон хүүхэд алга болдог байсан.)
+  function fillMissingKids(tree) {
+    const ids = new Set();
+    (function w(n) {
+      ids.add(Number(n.person.id));
+      if (n.spouse) ids.add(Number(n.spouse.id));
+      n.children.forEach(w);
+    })(tree);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      (function w(n) {
+        const all = unique([
+          ...kidsOf(n.person.id),
+          ...(n.spouse ? kidsOf(n.spouse.id) : [])
+        ]);
+        for (const id of all) {
+          if (ids.has(Number(id)) || !byId.has(Number(id))) continue;
+          const sub = build(id, pickSpouse(id, [n.person.id, n.spouse && n.spouse.id]), n.depth + 1, ids);
+          if (!sub) continue;
+          n.children.push(sub);
+          changed = true;
+        }
+        if (n.children.length > 1) {
+          n.children.sort((a, b) => {
+            const A = birthOrder(a.person), B = birthOrder(b.person);
+            for (let i = 0; i < 3; i++) if (A[i] !== B[i]) return A[i] - B[i];
+            return String(a.person.name || '').localeCompare(String(b.person.name || ''), 'mn');
+          });
+        }
+        n.children.forEach(w);
+      })(tree);
+    }
+    return tree;
+  }
+
+  // Аавын нэрний эхний үсэг + нэр (жишээ: «Б.Баярсайхан»).
+  function fatherInitial(m) {
+    const pids = [...(parentsByChild.get(Number(m.id)) || [])].map(Number);
+    const fatherId = pids.find(pid => byId.get(pid)?.sex === 'm') ?? pids[0];
+    const f = byId.get(fatherId);
+    const ch = String(f?.name || '').trim().charAt(0).toUpperCase();
+    return ch ? ch + '.' : '';
+  }
+  function displayName(m) {
+    const f = fatherInitial(m);
+    return (f ? f : '') + String(m.name || '(нэргүй)');
+  }
+  function ageOf(m) {
+    const born = Number(String(m.birth_date || m.birth_year || '').slice(0, 4));
+    if (!born) return '';
+    let end = NOW_Y;
+    if (Number(m.alive) === 0) {
+      const died = Number(String(m.death_date || '').slice(0, 4));
+      if (!died) return '';
+      end = died;
+    }
+    const age = end - born;
+    return age >= 0 && age < 130 ? String(age) : '';
+  }
+  function computeNodeH(tree) {
+    // Бүх карт НЭГ ижил өндөртэй — доод ирмэг нь шүдний эр шиг
+    // хазгай гарахгүй. Өндрийг хамгийн урт нэрээр тодорхойлно.
+    let maxChars = 1;
+    (function walk(n) {
+      for (const m of [n.person, n.spouse]) {
+        if (m) maxChars = Math.max(maxChars, displayName(m).length);
+      }
+      n.children.forEach(walk);
+    })(tree);
+    const H = Math.max(117, maxChars * 11.6 + 14);
+    (function walk(n) { n.h = H; n.children.forEach(walk); })(tree);
+    V_GAP = H + 24;
+  }
+
+  function measure(n) {
+    n.kidsW = 0;
+    n.children.forEach((c, i) => {
+      measure(c);
+      n.kidsW += c.w + (i ? H_GAP : 0);
+    });
+    n.w = Math.max(NODE_W, n.kidsW);
+    return n.w;
+  }
+
+  function place(n, x, depth) {
+    n.x = x + n.w / 2;
+    n.y = PAD_TOP + depth * V_GAP;
+    if (!n.children.length) return;
+    let cx = x + (n.w - n.kidsW) / 2;
+    for (const c of n.children) {
+      place(c, cx, depth + 1);
+      cx += c.w + H_GAP;
+    }
+  }
+
+  function nodeHtml(n) {
+    const p = n.person;
+    const sp = n.spouse;
+    const title = [p, sp].filter(Boolean).map(x => {
+      const yr = String(x.birth_date || x.birth_year || '').slice(0, 4);
+      const age = ageOf(x);
+      return displayName(x) + (yr ? ' · ' + yr + (age ? ' · ' + age : '') : '');
+    }).join('\n');
+    const col = (m) => {
+      const yr = String(m.birth_date || m.birth_year || '').slice(0, 4);
+      const age = ageOf(m);
+      const meta = [yr, age].filter(Boolean).join(' · ');
+      return '<div class="pcol"><span class="nm">' + esc(displayName(m)) + '</span>' +
+        (meta ? '<span class="yr">' + esc(meta) + '</span>' : '') + '</div>';
+    };
+    return '<div class="node' + (n.depth === 0 ? ' root' : '') + '" style="left:' +
+      (PAD + n.x - NODE_W / 2) + 'px;top:' + n.y + 'px;height:' + n.h + 'px" title="' +
+      esc(title) + '"><div class="cols">' + col(p) + (sp ? col(sp) : '') + '</div></div>';
+  }
+
+  let chartW = 0, chartH = 0, scale = 1, maxDepth = 0;
+
+  function render(rootId) {
+    const root = byId.get(Number(rootId));
+    if (!root) return;
+    const sp = pickSpouse(root.id);
+    const tree = fillMissingKids(build(root.id, sp, 0, new Set()));
+    computeNodeH(tree);
+    measure(tree);
+    place(tree, 0, 0);
+
+    maxDepth = 0;
+    const all = [];
+    (function walk(n) {
+      all.push(n);
+      maxDepth = Math.max(maxDepth, n.depth);
+      n.children.forEach(walk);
+    })(tree);
+
+    chartW = tree.w + PAD * 2;
+    chartH = PAD_TOP + (maxDepth + 1) * V_GAP + 60;
+
+    const paths = [];
+    (function wiresWalk(n) {
+      if (n.children.length) {
+        const bottom = n.y + n.h;
+        const railY = bottom + Math.max(10, (V_GAP - n.h) / 2);
+        paths.push('M ' + (PAD + n.x) + ' ' + bottom + ' V ' + railY);
+        const xs = n.children.map(c => PAD + c.x);
+        paths.push('M ' + Math.min(...xs) + ' ' + railY + ' H ' + Math.max(...xs));
+        for (const c of n.children) paths.push('M ' + (PAD + c.x) + ' ' + railY + ' V ' + c.y);
+      }
+      n.children.forEach(wiresWalk);
+    })(tree);
+
+    stage.style.width = chartW + 'px';
+    stage.style.height = chartH + 'px';
+    paper.style.width = chartW + 'px';
+    paper.style.height = chartH + 'px';
+    wires.setAttribute('viewBox', '0 0 ' + chartW + ' ' + chartH);
+    wires.setAttribute('width', chartW);
+    wires.setAttribute('height', chartH);
+    wires.innerHTML = paths.map(d => '<path d="' + d + '"/>').join('');
+    nodesEl.innerHTML = all.map(nodeHtml).join('');
+
+    const rootMen = [root, sp ? byId.get(Number(sp)) : null].filter(Boolean)
+      .map(m => m.name).filter(Boolean);
+    $('rootTitle').textContent = rootMen.join(' · ') || 'Ургийн үеийн харагдац';
+
+    // Бүтэн модыг жижигрүүлж уншигдэхгүй болгохгүй: эхлээд 0.85-аар,
+    // төв (эхлэл) картыг голлуулж харуулна. «Багтаах» бүх модыг багтаана.
+    scale = 1;
+    requestAnimationFrame(() => { applyScale(0.85); centerView(); });
+  }
+
+  function applyScale(next) {
+    scale = Math.max(0.06, Math.min(1.8, next));
+    stage.style.transform = 'scale(' + scale + ')';
+    paper.style.width = (chartW * scale) + 'px';
+    paper.style.height = (chartH * scale) + 'px';
+  }
+
+  function fit() {
+    const vw = viewport.clientWidth - 36;
+    const vh = viewport.clientHeight - 36;
+    applyScale(Math.min(1, vw / chartW, vh / chartH));
+    requestAnimationFrame(centerView);
+  }
+
+  function centerView() {
+    viewport.scrollLeft = Math.max(0, (paper.scrollWidth - viewport.clientWidth) / 2);
+    viewport.scrollTop = 0;
+  }
+
+  function setRoot(id) {
+    const n = Number(id);
+    if (!byId.has(n)) return;
+    const u = new URL(location.href);
+    u.searchParams.set('root', String(n));
+    history.replaceState(null, '', u);
+    render(n);
+  }
+
+  rootSel.innerHTML = members
+    .slice()
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'mn'))
+    .map(m => '<option value="' + m.id + '">' + esc(displayName(m)) + '</option>')
+    .join('');
+
+  const qRoot = Number(new URLSearchParams(location.search).get('root')) || 0;
+  const rootId = byId.has(qRoot) ? qRoot : defaultRoot();
+  if (!rootId) {
+    empty.style.display = 'grid';
+    empty.innerHTML = '<div><b>Гишүүн олдсонгүй.</b></div>';
+    return;
+  }
+  rootSel.value = String(rootId);
+  rootSel.onchange = () => setRoot(rootSel.value);
+
+  $('fitBtn').onclick = fit;
+  $('zoomIn').onclick = () => applyScale(scale * 1.15);
+  $('zoomOut').onclick = () => applyScale(scale / 1.15);
+  $('printBtn').onclick = () => window.print();
+
+  // Ctrl/Cmd + дугуй = томруулах; энгийн дугуй = гүйлгэх.
+  viewport.addEventListener('wheel', (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    applyScale(scale * (e.deltaY < 0 ? 1.1 : 0.9));
+  }, { passive: false });
+
+  // Чирж гүйлгэх (хулганы баруун/зүүн товч).
+  let dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
+  viewport.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    dragging = true; sx = e.clientX; sy = e.clientY;
+    sl = viewport.scrollLeft; st = viewport.scrollTop;
+    viewport.setPointerCapture(e.pointerId);
+    viewport.style.cursor = 'grabbing';
+  });
+  viewport.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    viewport.scrollLeft = sl - (e.clientX - sx);
+    viewport.scrollTop = st - (e.clientY - sy);
+  });
+  viewport.addEventListener('pointerup', () => {
+    dragging = false; viewport.style.cursor = '';
+  });
+  window.addEventListener('resize', () => { if (scale) centerView(); });
+
+  render(rootId);
+})();
+</script>
+</body>
+</html>

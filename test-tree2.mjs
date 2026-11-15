@@ -7,7 +7,7 @@
 //     — зөвхөн ЦӨӨН хүүхэд харагдана, бусад нь `👥 +N` тэмдэг дор нуугдана.
 //   • Н.Эрдэнэчимэг доор нь хосын зангилаа → дараагийн үе.
 import { buildRelations, CARD_W, ROW_H } from './src/tree.js';
-import { buildFullLayout, COUPLE_GAP } from './src/fulltree.js';
+import { buildFullLayout, COUPLE_GAP, SIB_GAP } from './src/fulltree.js';
 
 let pass = 0, fail = 0;
 function ok(name, cond, extra) {
@@ -136,9 +136,9 @@ ok('хань нь хүүхдийнхээ ЯГ хажууд (Сувдэрдэнэ
   N.get(9).y === N.get(6).y && N.get(12).y === N.get(7).y);
 ok('үеэл (Мягмардож, Маралмаа) ч анхдагчаар харагдана — D1-ийн бүх гишүүн модонд орно',
   has(13) && has(14) && rowOf(13) === rowOf(14) && rowOf(13) === rowOf(20) + 1);
-ok('хань хажууд нь (10px) — Сувдэрдэнэ + Ганхүү',
+ok('хань хажууд нь (10px), эх/охин зүүн — Сувдэрдэнэ + Ганхүү',
   N.get(9).y === N.get(6).y && N.get(9).x - (N.get(6).x + CARD_W) === COUPLE_GAP);
-ok('ах/дүү нарын зай 46px', N.get(21).x - (N.get(20).x + CARD_W) === 46);
+ok('ах/дүү нарын зай SIB_GAP', N.get(21).x - (N.get(20).x + CARD_W) === SIB_GAP);
 
 console.log('3) Сонгосон хүн (Н.Эрдэнэчимэг) нээхэд — хос + хүүхдүүд');
 const E = buildFullLayout({ members, rel, viewerId: 20, openId: 7 });
@@ -169,8 +169,8 @@ const sM = [...members, { id: 17, name: 'Долгор', sex: 'f', birth_year: '1
 const S = buildFullLayout({ members: sM, rel: small, viewerId: 20, openId: 8 });
 const SN = new Map(S.nodes.map(n => [n.id, n]));
 ok('Мажиг нээхэд хань Долгор зэрэгцэнэ', SN.has(17) && SN.get(17).y === SN.get(8).y);
-eq('2 хүүхэд нэг мөрөнд, зай 46px',
-  SN.get(19).x - (SN.get(18).x + CARD_W), 46);
+eq('2 хүүхэд нэг мөрөнд, зай SIB_GAP',
+  SN.get(19).x - (SN.get(18).x + CARD_W), SIB_GAP);
 ok('2 хүүхэд эцэг/эхийнхээ голд',
   Math.abs((SN.get(17).x + SN.get(8).x + CARD_W) / 2 - (SN.get(18).x + SN.get(19).x + CARD_W) / 2) <= 2);
 eq('цөөн хүүхэдтэй гэр бүлд давхцалгүй', overlaps(S), 0);

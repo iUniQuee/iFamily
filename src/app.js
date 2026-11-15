@@ -1,7 +1,7 @@
 // Маршрут, нэвтрэлт, API, хуудас
 import { initDb, all, get, run, insert, SCHEMA, MIGRATIONS } from './db.js';
 import {
-  layoutTree, sortMembers, buildRelations, visibleSet, bioSet, isAncestor, focusCards, focusBlood, inlawSet
+  layoutTree, sortMembers, buildRelations, visibleSet, bioSet, bloodLineSet, isAncestor, focusCards, focusBlood, inlawSet
 } from './tree.js';
 import { loginPage, appPage, notFoundPage } from './ui.js';
 import { scoreMember, scoreNewPhoto, scoreNewEvent, scoresPayload } from './scores.js';
@@ -183,9 +183,16 @@ async function buildState(user, env, opts = {}) {
       bio = new Set([...bioSet(ctx.rel, root)].filter(id => ctx.bio.has(id)));
     }
   }
-  const members = ctx.members.filter(m => vis.has(m.id)).map(m =>
-    sanitize(m, ctx.isAdmin || bio.has(m.id), !opts.publicView && canEdit(user, m.id, ctx.trMap))
-  );
+  const members = ctx.members.filter(m => vis.has(m.id)).map(m => {
+    const x = sanitize(m, ctx.isAdmin || bio.has(m.id), !opts.publicView && canEdit(user, m.id, ctx.trMap));
+    // Зурагтай (base64) гишүүдийн зургийг үндсэн state-д БҮТНЭЭР хийхгүй —
+    // 5 зураг л 650KB болж, мод ачаалахад удаан болдог. Карт нь тусад нь
+    // /api/members/:id/photo-оос lazy авна. Профайлд бүтэн зураг хэвээр.
+    if (!opts.publicView && x.photo && /^data:image\//i.test(String(m.photo || ''))) {
+      x.photo = '/api/members/' + m.id + '/photo';
+    }
+    return x;
+  });
   const links = [];
   for (const c of ctx.children) {
     if (!vis.has(c.child_id)) continue;
@@ -723,6 +730,18 @@ export async function handle(req, env) {
   const path = url.pathname;
   try {
     if (path.startsWith('/api/')) return await api(req, env, url, path);
+    // Удам модны тусдаа хуудас: Cloudflare static assets .html-ийг /udam руу
+    // redirect хийдэг тул extensionless замыг өөрөө үйлчилнэ.
+    if ((path === '/udam' || path === '/udam/') && req.method === 'GET' && env.ASSETS) {
+      const a = await env.ASSETS.fetch(new Request(new URL('/udam', req.url), req));
+      if (a.status === 200) {
+        const h = new Headers(a.headers);
+        h.set('content-type', 'text/html; charset=utf-8');
+        h.set('cache-control', 'no-store, must-revalidate');
+        h.set('cdn-cache-control', 'no-store');
+        return new Response(a.body, { status: 200, headers: h });
+      }
+    }
     // public/ дахь статик файлууд (PWA, клиент JS, icon, зурхайн хуудас)
     if (env.ASSETS && req.method !== 'POST' && /\.(js|mjs|png|jpg|svg|ico|webmanifest|css|html|json|txt)$/.test(path)) {
       const a = await env.ASSETS.fetch(req);
@@ -822,6 +841,47 @@ async function api(req, env, url, path) {
     return json(await buildState(user, env, { root: Number(url.searchParams.get('root')) || 0 }));
   }
 
+  // Удам мод (тусдаа хуудас) — зөвхөн шаардлагатай хөнгөн өгөгдөл.
+  // Үндсэн модны layout-д хүрэхгүй; /udam.html хуудсаас уншина.
+  if (path === '/api/lineage' && method === 'GET') {
+    need();
+    const ctx = await contextOf(user, env);
+    // Админ бүх модыг харна. Бусад хэрэглэгч ЗӨВХӨН өөрийн цусан
+    // хамаатныг харна — хань, хадам, танил зэрэг цусан бус хүн орохгүй.
+    let vis;
+    if (ctx.isAdmin) {
+      vis = ctx.vis;
+    } else {
+      vis = new Set();
+      if (user.member_id) {
+        for (const id of bloodLineSet(ctx.rel, Number(user.member_id))) {
+          if (ctx.vis.has(id)) vis.add(id);
+        }
+      }
+    }
+    const has = (id) => vis.has(Number(id));
+    return json({
+      admin: ctx.isAdmin,
+      blood_only: !ctx.isAdmin,
+      members: ctx.members.filter(m => vis.has(m.id)).map(m => ({
+        id: m.id, name: m.name || '', sex: m.sex || '?',
+        birth_year: m.birth_year || '', birth_date: m.birth_date || '',
+        clan: m.clan || '', alive: m.alive, death_date: m.death_date || ''
+      })),
+      children: ctx.children
+        .filter(c => has(c.child_id))
+        .map(c => ({
+          f: c.father_id && has(c.father_id) ? c.father_id : null,
+          m: c.mother_id && has(c.mother_id) ? c.mother_id : null,
+          c: c.child_id
+        }))
+        .filter(c => c.f || c.m),
+      unions: ctx.unions
+        .filter(u => has(u.a_id) && has(u.b_id))
+        .map(u => ({ a: u.a_id, b: u.b_id }))
+    });
+  }
+
   // «БҮТЭН МОД» — ХАТУУ ҮЕИЙН МӨР (Row 1, Row 2, Row 3 …). Зөвхөн viewer-ийн
   // цусан шугам; хань (бэр/хүргэн) нь зөвхөн НЭЭЛТТЭЙ салбар дээр, холын худ
   // (хань талын эцэг/эх) ХЭЗЭЭ Ч гарахгүй. `open` — аккордеоноор нээсэн хүн.
@@ -840,8 +900,34 @@ async function api(req, env, url, path) {
     // Бэр/хүргэн дээр дарахад ч ижил дүрэм: мод БҮТНЭЭРЭЭ харагдана, зөвхөн
     // үеийн мөр нь дарсан хүнээр төвлөрнө (түүний эцэг/эх, ах/дүү, хань,
     // хүүхэд бүгд харагдана — юу ч нуугдахгүй).
+    // Бүтэн модонд ЦУСАН үр удам бүхэлдээ харагдана: харагдах хүрээнд
+    // байгаа хүн бүрийн хүүхэд, ач/зээ … (алс холын үеэл ч) нэмэгдэнэ.
+    const visAll = new Set(ctx.vis);
+    // БҮХ ӨВГИЙГ дээшээ нээж, дараа нь тэдний БҮХ үр удмыг доошоо нэмнэ:
+    // үеэл, үеэлийн хүүхэд, ах/дүүгийн ач/зээ — алс холын ч бүгд харагдана.
+    {
+      const q = [...visAll];
+      while (q.length) {
+        const c0 = q.pop();
+        for (const p0 of ctx.rel.par.get(c0) || []) {
+          if (!visAll.has(p0)) { visAll.add(p0); q.push(p0); }
+        }
+      }
+    }
+    {
+      const q = [...visAll];
+      while (q.length) {
+        const p0 = q.pop();
+        for (const k0 of ctx.rel.kids.get(p0) || []) {
+          if (!visAll.has(k0)) { visAll.add(k0); q.push(k0); }
+        }
+      }
+    }
+    for (const id0 of [...visAll]) {
+      for (const sp0 of ctx.rel.sp.get(id0) || []) if (!visAll.has(sp0)) visAll.add(sp0);
+    }
     const calc = (openId, closed) => buildFullLayout({
-      members: ctx.members, rel: ctx.rel, vis: ctx.vis, viewerId: id, openId,
+      members: ctx.members, rel: ctx.rel, vis: visAll, viewerId: id, openId,
       closedKids: !!closed
     });
     // ТОГТООСОН байрлал байвал түүнийгээ буцаана (гишүүдийн бүрэлдэхүүн
@@ -856,7 +942,7 @@ async function api(req, env, url, path) {
         // харуулахгүй — шинэ хүмүүс гарна. Тогтоолт нь хэвээр (locked=true).
         if (!reqClosed && (!reqOpen || reqOpen === savedOpen)) {
           const now = calc(savedOpen, false);
-          const same = Array.isArray(saved.cards) && saved.cards.length === now.cards.length &&
+          const same = saved.v === now.v && Array.isArray(saved.cards) && saved.cards.length === now.cards.length &&
             saved.cards.every(x => now.cards.includes(x));
           if (same) return json({ ...saved, locked: true, fixed: true });
         }
@@ -893,6 +979,32 @@ async function api(req, env, url, path) {
     need();
     const id = Number(url.searchParams.get('id')) || 0;
     const ctx = await contextOf(user, env);
+    // Харагдах хүрээний БҮХ цустан үр удам — дарсан хүний хүүхэд, ач/зээ
+    // (алс үеийн ч) фокус-горимд гарна.
+    const visAll = new Set(ctx.vis);
+    // БҮХ ӨВГИЙГ дээшээ нээж, дараа нь тэдний БҮХ үр удмыг доошоо нэмнэ:
+    // үеэл, үеэлийн хүүхэд, ах/дүүгийн ач/зээ — алс холын ч бүгд харагдана.
+    {
+      const q = [...visAll];
+      while (q.length) {
+        const c0 = q.pop();
+        for (const p0 of ctx.rel.par.get(c0) || []) {
+          if (!visAll.has(p0)) { visAll.add(p0); q.push(p0); }
+        }
+      }
+    }
+    {
+      const q = [...visAll];
+      while (q.length) {
+        const p0 = q.pop();
+        for (const k0 of ctx.rel.kids.get(p0) || []) {
+          if (!visAll.has(k0)) { visAll.add(k0); q.push(k0); }
+        }
+      }
+    }
+    for (const id0 of [...visAll]) {
+      for (const sp0 of ctx.rel.sp.get(id0) || []) if (!visAll.has(sp0)) visAll.add(sp0);
+    }
     const empty = { focus: id, cards: [], hidden: [], nodes: [], edges: [], width: 0, height: 0 };
     if (!id || !ctx.vis.has(id)) return json(empty, 404);
     const fs = focusCards(ctx.rel, id);
@@ -949,6 +1061,12 @@ async function api(req, env, url, path) {
       }
     }
     for (const x of open) if (ctx.vis.has(x) && !cards.has(x)) cards.add(x);
+    // ДАРСАН хүний хүүхдүүд (болон хань) фокус-горимд ЗААВАЛ харагдана.
+    for (const x of open) {
+      if (!ctx.vis.has(x)) continue;
+      for (const k of ctx.rel.kids.get(x) || []) if (visAll.has(k)) { cards.add(k); bloodCards.add(k); }
+      for (const sp of ctx.rel.sp.get(x) || []) if (visAll.has(sp)) cards.add(sp);
+    }
     // `closed` — ХААГДСАН ГЭР БҮЛ (эцэг/эхийн id): тэдний хүүхдүүд нуугдана.
     // Гэр бүл сэлгэхэд өмнөх гэр бүл бүхэлдээ хураагдана — «Би» карт үлдэнэ.
     const closed = new Set(String(url.searchParams.get('closed') || '')
@@ -1206,6 +1324,42 @@ async function api(req, env, url, path) {
       for (const n of layout.nodes) { mx = Math.max(mx, n.x + (n.w || CW)); my = Math.max(my, n.y + RH); }
       layout.width = mx; layout.height = my;
     }
+    // ДАВХЦАЛ АРИЛГАХ (фокус): нэг мөрөнд карт бие биендээ орвол баруун
+    // талын картуудыг гулсуулж, хөндлөн зайг 16px-аас багагүй болгоно.
+    {
+      const dxOf = new Map();
+      const byRow = new Map();
+      for (const n of layout.nodes) {
+        if (!byRow.has(n.y)) byRow.set(n.y, []);
+        byRow.get(n.y).push(n);
+      }
+      for (const list of byRow.values()) {
+        list.sort((a, b) => a.x - b.x);
+        let prevR = null;
+        for (const n of list) {
+          const w = n.w || 156;
+          if (prevR != null && n.x < prevR + 16) {
+            const d = prevR + 16 - n.x;
+            n.x += d;
+            dxOf.set(n.id, (dxOf.get(n.id) || 0) + d);
+          }
+          prevR = n.x + w;
+        }
+      }
+      if (dxOf.size) {
+        const dxFor = (e) => {
+          const ids = e.t === 's' ? [e.a] : e.t === 'p' ? [e.a] : e.t === 'b' ? [e.a]
+            : e.t === 'c' ? [e.p] : [];
+          for (const id of ids) if (dxOf.has(id)) return dxOf.get(id);
+          return 0;
+        };
+        for (const e of layout.edges) {
+          const d = dxFor(e);
+          if (!d) continue;
+          for (const k of ['x', 'x1', 'x2']) if (e[k] != null) e[k] += d;
+        }
+      }
+    }
     // Бүх шилжилт, давхцал арилгасны дараа хүрээг ДАХИН тооцно — эс бөгөөс
     // fit() хэт том зум тавьж, захын картууд дэлгэцнээс гарч тасарна.
     {
@@ -1250,6 +1404,29 @@ async function api(req, env, url, path) {
         has_parents: (ctx.rel.par.get(x.id) || new Set()).size > 0
       }))
     });
+  }
+
+  // --- гишүүний нүүр зураг (base64-ийг тусад нь, кэштэй) ---
+  let pm = path.match(/^\/api\/members\/(\d+)\/photo$/);
+  if (pm && method === 'GET') {
+    need();
+    const id = Number(pm[1]);
+    const mem = await get(env, 'SELECT id, photo FROM members WHERE id=?', id);
+    if (!mem) throw httpErr(404, 'Зураг олдохгүй');
+    // Админд бүх зураг нээлттэй; бусад хэрэглэгчид харах хүрээгээ шалгана.
+    if (user.role !== 'super' && user.role !== 'admin') {
+      const ctx = await contextOf(user, env);
+      if (!ctx.vis.has(id)) throw httpErr(404, 'Зураг олдохгүй');
+    }
+    const raw = String(mem.photo || '');
+    const m = raw.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+    if (!m) throw httpErr(404, 'Зураг олдохгүй');
+    const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+    return new Response(bytes, { headers: {
+      'content-type': m[1],
+      'cache-control': 'private, max-age=300',
+      'x-content-type-options': 'nosniff'
+    } });
   }
 
   // --- гишүүн ---
@@ -1482,11 +1659,30 @@ async function api(req, env, url, path) {
   if (path === '/api/avatars' && method === 'GET') {
     const rows = await all(env, 'SELECT slot, url FROM default_avatars');
     const avatars = {};
-    for (const r of rows) if (AVATAR_SLOTS.includes(r.slot) && r.url) avatars[r.slot] = r.url;
+    for (const r of rows) {
+      if (!AVATAR_SLOTS.includes(r.slot) || !r.url) continue;
+      // base64-ийг хариултад хийхгүй — 8 дүрс ~250KB болж, карт бүр дээр
+      // дахин render болдог. Браузер зургийг тусад нь, кэштэй татна.
+      avatars[r.slot] = /^data:image\//i.test(String(r.url))
+        ? '/api/avatars/' + r.slot
+        : r.url;
+    }
     return json({ avatars });
   }
   let avm = path.match(/^\/api\/avatars\/([a-z_]+)$/);
   if (avm && AVATAR_SLOTS.includes(avm[1])) {
+    if (method === 'GET') {
+      const row = await get(env, 'SELECT url FROM default_avatars WHERE slot=?', avm[1]);
+      const raw = String((row && row.url) || '');
+      const m = raw.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+      if (!m) throw httpErr(404, 'Дүрс олдохгүй');
+      const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+      return new Response(bytes, { headers: {
+        'content-type': m[1],
+        'cache-control': 'public, max-age=86400',
+        'x-content-type-options': 'nosniff'
+      } });
+    }
     needAdmin();
     if (method === 'POST') {
       const b = await readBody(req);
@@ -1525,21 +1721,119 @@ async function api(req, env, url, path) {
     const slim = m => ({ id: m.id, name: m.name, sex: m.sex, birth_year: m.birth_year,
       birth_date: m.birth_date, phone: m.phone, created_at: m.created_at });
     const isolated = members.filter(m => !linked.has(Number(m.id))).map(slim);
+    const nameById = new Map(members.map(m => [m.id, m.name || '']));
+    const parInfo = new Map();
+    for (const c of children) {
+      const id = Number(c.child_id);
+      if (!id) continue;
+      if (!parInfo.has(id)) parInfo.set(id, { f: null, m: null });
+      const p = parInfo.get(id);
+      if (c.father_id) p.f = Number(c.father_id);
+      if (c.mother_id) p.m = Number(c.mother_id);
+    }
+    const normName = (v) => String(v || '').toLowerCase()
+      .replace(/[.,·]/g, ' ').replace(/\s+/g, ' ').trim();
+    const givenOf = (v) => {
+      const a = normName(v).split(' ').filter(Boolean);
+      return a.length ? a[a.length - 1] : '';
+    };
+    // Эцэг/эхийн нэрийг инициал, цэг таслалаас үл хамааруулж харьцуулна:
+    // «Баярсайхан» = «Б.Баярсайхан», «Эрдэнэчимэг» = «Н.Эрдэнэчимэг».
+    const normParentName = (v) => {
+      const a = normName(v).split(' ').filter(Boolean);
+      const full = a.filter(x => x.length > 1);
+      return full.length ? full[full.length - 1] : (a[0] || '');
+    };
+    const parentSig = (id) => {
+      const p = parInfo.get(Number(id));
+      if (!p) return '';
+      const f = p.f ? normParentName(nameById.get(p.f)) : '';
+      const m = p.m ? normParentName(nameById.get(p.m)) : '';
+      return (f || m) ? f + '|' + m : '';
+    };
+    const parentLabel = (id) => {
+      const p = parInfo.get(Number(id));
+      if (!p || (!p.f && !p.m)) return 'эцэг/эх тодорхойгүй';
+      return [p.f ? 'аав: ' + (nameById.get(p.f) || ('#' + p.f)) : '',
+        p.m ? 'ээж: ' + (nameById.get(p.m) || ('#' + p.m)) : ''].filter(Boolean).join(' · ');
+    };
+    const yearOf = (m) => {
+      const bd = String(m.birth_date || '').match(/^(\d{4})/);
+      if (bd) return bd[1];
+      const by = String(m.birth_year || '').match(/\d{4}/);
+      return by ? by[0] : '';
+    };
+    // Ижил нэр + ижил төрсөн он + эцэг/эхийн нэр ижил — л давхар гэж үзнэ.
+    // Эцэг/эх нь өөр бол ижил нэртэй ч өөр хүн (жишээ нь олон «Баярсайхан»).
     const byName = new Map();
     for (const m of members) {
-      const k = String(m.name || '').trim();
-      if (!k) continue;
+      const nm = String(m.name || '').trim();
+      if (!nm) continue;
+      const k = nm + '\u0000' + yearOf(m) + '\u0000' + parentSig(m.id);
       if (!byName.has(k)) byName.set(k, []);
       byName.get(k).push(m);
     }
-    const duplicates = [...byName.entries()]
-      .filter(([, arr]) => arr.length > 1)
-      .map(([name, arr]) => ({
-        name,
+    const duplicates = [...byName.values()]
+      // Зөвхөн ижил нэр гэдгээр бус, төрсөн он эсвэл эцэг/эхийн нэр
+      // бас таарсан үед л давхар гэж үзнэ.
+      .filter(arr => arr.length > 1 && (yearOf(arr[0]) || parentSig(arr[0].id)))
+      .map(arr => ({
+        name: String(arr[0].name || '').trim(),
+        year: yearOf(arr[0]),
+        parent: parentLabel(arr[0].id),
         members: arr.map(m => ({ ...slim(m), linked: linked.has(Number(m.id)) }))
       }))
       .sort((a, b) => b.members.length - a.members.length || a.name.localeCompare(b.name));
-    return json({ total: members.length, isolated, duplicates });
+
+    // Нэрний бичиглэл өөр (Мягмардож / Мягмардорж) ч эцэг/эхийн нэр,
+    // төрсөн он ижил байвал давхар байж болзошгүй.
+    const lev = (a, b) => {
+      const d = Array.from({ length: b.length + 1 }, (_, j) => j);
+      for (let i = 1; i <= a.length; i++) {
+        let prev = d[0];
+        d[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+          const tmp = d[j];
+          d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = tmp;
+        }
+      }
+      return d[b.length];
+    };
+    const buckets = new Map();
+    for (const m of members) {
+      const given = givenOf(m.name);
+      const year = yearOf(m);
+      const psig = parentSig(m.id);
+      if (!given || !year || !psig) continue; // эцэг/эх тодорхойгүй бол таамаглахгүй
+      const k = year + '\u0000' + psig;
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(m);
+    }
+    const similar = [];
+    for (const [k, arr] of buckets) {
+      const year = k.split('\u0000')[0];
+      const groups = [];
+      for (const m of arr) {
+        const given = givenOf(m.name);
+        let grp = groups.find(x => x.given === given ||
+          (given.length >= 5 && x.given.length >= 5 && lev(given, x.given) <= 1));
+        if (!grp) { grp = { given, members: [] }; groups.push(grp); }
+        grp.members.push(m);
+      }
+      for (const grp of groups) {
+        if (grp.members.length < 2) continue;
+        if (new Set(grp.members.map(m => normName(m.name))).size < 2) continue;
+        similar.push({
+          given: grp.given, year,
+          parent: parentLabel(grp.members[0].id),
+          reason: 'ижил эцэг/эхийн нэр',
+          members: grp.members.map(m => ({ ...slim(m), linked: linked.has(Number(m.id)) }))
+        });
+      }
+    }
+    similar.sort((a, b) => b.members.length - a.members.length || a.given.localeCompare(b.given));
+    return json({ total: members.length, isolated, duplicates, similar });
   }
   if (path === '/api/users' && method === 'GET') {
     needAdmin();
@@ -1669,12 +1963,12 @@ async function api(req, env, url, path) {
 
   // --- Web Push: админд утасны мэдэгдэл (шинэ бүртгэл / карт холбох хүсэлт) ---
   if (path === '/api/push/key' && method === 'GET') {
-    needAdmin();
+    need();
     const key = pushPublicKey(env);
     return json({ key, enabled: !!key });
   }
   if (path === '/api/push/subscribe' && method === 'POST') {
-    needAdmin();
+    need();
     const b = await readBody(req);
     const endpoint = String(b.endpoint || '');
     const keys = b.keys || {};
@@ -1685,6 +1979,11 @@ async function api(req, env, url, path) {
     return json({ ok: true });
   }
 
+  // --- 🎂 Төрсөн өдрийн мэдэгдэл: апп нээгдэхэд нэг удаа шалгуулна ---
+  if (path === '/api/birthday/notify' && method === 'POST') {
+    const r = await sendBirthdayPush(env);
+    return json({ ok: true, ...r });
+  }
   // --- Web Push: төлөв ба туршилт (админ өөрөө шалгах) ---
   if (path === '/api/push/status' && method === 'GET') {
     needAdmin();
@@ -2167,9 +2466,61 @@ async function api(req, env, url, path) {
   throw httpErr(404, 'Маршрут олдохгүй');
 }
 
+// ---------- 🎂 Төрсөн өдрийн мэдэгдэл (Web Push) ----------
+// Өдөрт НЭГ удаа, өглөө 09:00 (Улаанбаатар, UTC+8) — тухайн хүний төрсөн
+// өдөр хамааралтай хүмүүсийн утас руу «Аавынхан» нэртэй мэдэгдэл илгээнэ.
+const BDAY_TITLE = 'Аавынхан';
+export async function sendBirthdayPush(env) {
+  try {
+    const ubNow = new Date(Date.now() + 8 * 3600 * 1000);   // УБ цаг
+    const todayKey = ubNow.toISOString().slice(0, 10);
+    const mmdd = todayKey.slice(5, 10);
+    if (ubNow.getUTCHours() < 9) return { sent: 0, skipped: 'too-early' };
+    const done = await get(env, "SELECT value FROM design WHERE key='bday_push_date'");
+    if (done && done.value === todayKey) return { sent: 0, skipped: 'already-sent' };
+    const bdays = await all(env,
+      "SELECT id, name, birth_date FROM members WHERE alive=1 AND birth_date LIKE ?", '%-' + mmdd);
+    if (!bdays.length) return { sent: 0, skipped: 'no-birthday' };
+    // Хамааралтай хүмүүс — цусан холбоогоор хоёр тийшээ
+    const children = await all(env, 'SELECT father_id, mother_id, child_id FROM children');
+    const rel = buildRelations(children, []);
+    const related = new Set();
+    const q = bdays.map(b => b.id);
+    for (const id of q) related.add(id);
+    while (q.length) {
+      const id = q.pop();
+      for (const p2 of rel.par.get(id) || []) if (p2 != null && !related.has(p2)) { related.add(p2); q.push(p2); }
+      for (const k2 of rel.kids.get(id) || []) if (k2 != null && !related.has(k2)) { related.add(k2); q.push(k2); }
+    }
+    let subs = [];
+    try {
+      subs = await all(env, `SELECT s.id, s.endpoint, s.p256dh, s.auth, u.member_id
+        FROM push_subs s JOIN users u ON u.id = s.user_id`);
+    } catch (e) { subs = []; }
+    const names = bdays.map(b => b.name).join(', ');
+    const body = bdays.length === 1
+      ? `Өнөөдөр ${names}-ийн төрсөн өдөр 🎂`
+      : `Өнөөдөр төрсөн өдөр: ${names} 🎂`;
+    let sent = 0;
+    for (const s of subs) {
+      if (s.member_id != null && !related.has(Number(s.member_id))) continue;
+      try {
+        const r = await sendPush(env, s, { title: BDAY_TITLE, body, url: '/', tag: 'bday' });
+        if (r.ok) sent++;
+        else if (r.gone) await run(env, 'DELETE FROM push_subs WHERE id=?', s.id);
+      } catch (e) { /* нэг төхөөрөмж эвдэрсэн ч бусдад саад болохгүй */ }
+    }
+    await run(env, "INSERT INTO design(key,value) VALUES('bday_push_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", todayKey);
+    return { sent, birthdays: bdays.length };
+  } catch (e) {
+    return { sent: 0, error: String(e && e.message || e) };
+  }
+}
+
 // ---------- өглөөний Telegram сануулга (cron) ----------
 export async function scheduled(env) {
   await initDb(env);
+  try { await sendBirthdayPush(env); } catch (e) { /* push алдаа telegram-д саад болохгүй */ }
   const d = await getDesign(env);
   if (!d.tg_token || !d.tg_chat) return;
   const rows = await all(env, "SELECT name, birth_date FROM members WHERE alive=1 AND birth_date != ''");

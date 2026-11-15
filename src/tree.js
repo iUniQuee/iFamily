@@ -4,7 +4,7 @@ export const CARD_H = 96;    // картны хайрцаг өндөр
 export const H_GAP = 24;     // ах/дүүгийн салбар хоорондын зай
 export const UNIT_GAP = 14;  // карт хоорондын суурь зай
 export const COUPLE_GAP = 32; // аав+ээж (хос) — хажууд зэрэгцэн, нэг блок мэт
-export const ROW_H = 140;    // үеийн өндөр
+export const ROW_H = 160;    // үеийн өндөр
 
 export function yearNum(v) {
   if (v == null) return null;
@@ -100,8 +100,33 @@ function bfsUD(rel, root, maxDist) {
   return out;
 }
 
+// Зөвхөн ЦУСАН хамаатан: эхлэгчийн өвөг + бүх үр удам, ах/эгч, үеэл…
+// Хань/хадам (гэрлэлтийн холбоо) орохгүй — хүүхдээс нь дээшээ эцэг/эхийг
+// дагаж гаргахгүй тул хүүхдийн нөгөө эцэг/эх (хань) хасагдана.
+export function bloodLineSet(rel, rootId) {
+  const out = new Set();
+  const root = Number(rootId);
+  if (!root) return out;
+  out.add(root);
+  // 1) эхлэгчээс дээшээ: эцэг/эх, өвөг/эмээ…
+  const ups = [root];
+  for (let i = 0; i < ups.length; i++) {
+    for (const p of rel.par.get(ups[i]) || []) {
+      if (!out.has(p)) { out.add(p); ups.push(p); }
+    }
+  }
+  // 2) бүх өвөг + эхлэгчээс доошоо: хүүхэд, ач/зээ, ах/эгч, үеэл…
+  const downs = [...ups];
+  for (let i = 0; i < downs.length; i++) {
+    for (const k of rel.kids.get(downs[i]) || []) {
+      if (!out.has(k)) { out.add(k); downs.push(k); }
+    }
+  }
+  return out;
+}
+
 // Хүрээ (closeCircle): өөрөө + цусны хамаарал (дээд тал нь maxDist үе) + тэдний эхнэр/нөхөр
-export function visibleSet(rel, rootId, maxDist = 4) {
+export function visibleSet(rel, rootId, maxDist = 1000) {
   const blood = bfsUD(rel, rootId, maxDist);
   const base = new Set(blood);
   for (const id of blood) for (const s of rel.sp.get(id) || []) base.add(s);
@@ -737,7 +762,7 @@ export function layoutTree({ members, children, unions, order, gaps }) {
     // Хүүхдүүд эцэг/эхээс ДЭЭР байвал шугмыг картын ДЭЭД ирмэгээс эхлүүлнэ
     // (доош гүйлгэвэл картыг огтолно).
     const kidsAboveP = kidTopP + CARD_H <= an.y + 4;
-    let stemY0P = kidsAboveP ? an.y : an.y + CARD_H / 2;
+    let stemY0P = kidsAboveP ? an.y : an.y + CARD_H + 14;
     let busY = kidTopP - 24;
     // Автобус нь тавцангийн доод ирмэг ба хүүхдийн мөрний ХООРОНД,
     // хоёулаасаа ижил зайтай байрлана — ирмэгтэй давхацахгүй.
@@ -752,6 +777,7 @@ export function layoutTree({ members, children, unions, order, gaps }) {
     } else if (kidTopP > an.y + CARD_H) {
       busY = Math.min(Math.max(busY, an.y + CARD_H + 10), kidTopP - 8);
     }
+    stemY0P = Math.min(stemY0P, busY - 8);
     edges.push({
       t: 'b', a, b,
       kids: kidNodes.map(n => n.id),
@@ -779,10 +805,11 @@ export function layoutTree({ members, children, unions, order, gaps }) {
       const gap = kidTopS - blockBotS;
       busY = gap >= 60 ? kidTopS - 24 : blockBotS + Math.round(gap / 2);
     }
+    const stemY0S = Math.min(kidsAboveS ? pn.y : pn.y + CARD_H + 14, busY - 8);
     edges.push({
       t: 'b', a: p, b: p,
       kids: kidNodes.map(n => n.id),
-      x: stemX, y0: kidsAboveS ? pn.y : pn.y + CARD_H, y1: busY,
+      x: stemX, y0: stemY0S, y1: busY,
       stubs: kidNodes.map(n => ({ c: n.id, x: mid(n), y0: busY, y1: n.y }))
     });
   }

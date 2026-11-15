@@ -76,7 +76,7 @@ html[data-theme="midnight"] {
 button, .btn {
   border: 1px solid var(--line); background: var(--panel); color: var(--text);
   border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer;
-  font-family: inherit; white-space: nowrap;
+  font-family: inherit; white-space: nowrap; text-decoration: none;
 }
 button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -122,19 +122,20 @@ html[data-card="big"] .card .grp { top: -8px; }
   height: 96px; background: #fff; border: 2px solid #e6ebf3;
   box-shadow: 0 4px 14px rgba(23,42,74,.10); display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 2px;
-  padding: 6px 8px 5px; cursor: pointer; overflow: hidden;
+  padding: 4px 2px 3px; cursor: pointer; overflow: hidden;
+  width: 140px; margin: 0 auto;
 }
 html[data-card="round"] .card .box { border-radius: 22px; }
 html[data-card="square"] .card .box { border-radius: 6px; }
 html[data-card="big"] .card .box { border-radius: 24px; }
-html[data-card="big"] .card .ava { width: 40px; height: 40px; font-size: 18px; }
+html[data-card="big"] .card .ava { width: 46px; height: 46px; font-size: 18px; }
 
 /* «Шилдэг» — дугуй, гялалзсан, хүйсийн өнгийн туузтай карт (бүх хэлбэрийн шилдэг шинж) */
 html[data-card="best"] .card .box {
   border-radius: 18px; border: 2px solid #dfe8f5;
   background: linear-gradient(180deg, #ffffff 0%, #f6f9ff 55%, #e9f1fd 100%);
   box-shadow: 0 6px 16px rgba(23,42,74,.14);
-  padding: 4px 8px 3px;
+  padding: 3px 2px 2px;
 }
 html[data-card="best"] .card.m .box { border-top: 4px solid #4a90d9; }
 html[data-card="best"] .card.f .box { border-top: 4px solid #d06a9a; }
@@ -146,12 +147,12 @@ html[data-card="best"] .card .ava {
   border: 2px solid #fff; box-shadow: 0 2px 6px rgba(23,42,74,.18);
 }
 html[data-card="best"] .card img.ava { background: #eef3fb; }
-html[data-card="best"] .card .nm { font-size: 13.5px; }
-html[data-card="best"] .card .meta { font-size: 10.5px; color: #5b6f89; }
-html[data-card="best"] .card.sel .box { box-shadow: 0 0 0 3px #f59e0b, 0 6px 18px rgba(245,158,11,.25); border-color: #f59e0b; }
-html[data-card="best"] .card.focus .box { box-shadow: 0 0 0 3px var(--accent2), 0 6px 18px rgba(47,174,106,.22); border-color: var(--accent2); }
+html[data-card="best"] .card .nm { font-size: 14.5px; }
+html[data-card="best"] .card .meta { font-size: 11px; color: #5b6f89; }
+html[data-card="best"] .card.sel .box { outline: 1px solid #f59e0b; outline-offset: -1px; box-shadow: 0 4px 14px rgba(23,42,74,.10); }
+html[data-card="best"] .card.focus .box { outline: 1px solid #2fae6a; outline-offset: -1px; box-shadow: 0 4px 14px rgba(23,42,74,.10); }
 .card .ava {
-  width: 40px; height: 40px; min-width: 40px; border-radius: 50%;
+  width: 44px; height: 44px; min-width: 44px; border-radius: 50%;
   background: #9aa7b5; color: #fff; display: flex; align-items: center;
   justify-content: center; font-weight: 700; font-size: 17px;
 }
@@ -160,13 +161,13 @@ html[data-card="best"] .card.focus .box { box-shadow: 0 0 0 3px var(--accent2), 
 /* Нүүр зураг — дугуй дотор бүтэн дүүрэн харагдана */
 .card img.ava { object-fit: cover; background: #e6ebf3; border: 0; display: block; }
 .card .nm {
-  font-size: 13.5px; font-weight: 800; line-height: 1.08; text-align: center; width: 100%;
+  font-size: 14.5px; font-weight: 800; line-height: 1.08; text-align: center; width: 100%;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .card .dead .ava { filter: grayscale(1); opacity: .7; }
-.card .meta { font-size: 10.5px; color: #6d7f96; text-align: center; margin-top: 0; letter-spacing: .2px; line-height: 1.05; }
-.card.sel .box { box-shadow: 0 0 0 3px #f59e0b, 0 6px 18px rgba(245,158,11,.25); border-color: #f59e0b; }
-.card.focus .box { box-shadow: 0 0 0 3px var(--accent2), 0 6px 18px rgba(47,174,106,.22); border-color: var(--accent2); }
+.card .meta { font-size: 11px; color: #6d7f96; text-align: center; margin-top: 0; letter-spacing: .2px; line-height: 1.05; }
+.card.sel .box { outline: 1px solid #f59e0b; outline-offset: -1px; box-shadow: 0 4px 14px rgba(23,42,74,.10); }
+.card.focus .box { outline: 1px solid #2fae6a; outline-offset: -1px; box-shadow: 0 4px 14px rgba(23,42,74,.10); }
 .card.dead .box { opacity: .8; }
 /* Нас барсан гишүүний жижиг тэмдэг — картын баруун дээд буланд */
 .card .dead-mark {
@@ -316,11 +317,11 @@ button.btn-ok:hover { filter: brightness(.9); }
   padding: 2px 9px; border-radius: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .card { transition: opacity .15s; }
-.card.kin .box { outline: 3px solid #2fae6a; outline-offset: 1px; }
+.card.kin .box { outline: 1px solid #2fae6a; outline-offset: -1px; }
 .link-s.link-hl, .link-c.link-hl { stroke: #2fae6a; stroke-width: 4; }
 /* Тодруулга: АЛТ = шууд дээшээ үе, ЦЭНХЭР = шууд доошоо үе (хажуугийнх ялгарахгүй) */
-.card.asc .box { outline: 3px solid #FFD700; outline-offset: 1px; box-shadow: 0 0 12px rgba(255, 215, 0, .5); }
-.card.desc .box { outline: 3px solid #2fae6a; outline-offset: 1px; box-shadow: 0 0 12px rgba(47, 174, 106, .4); }
+.card.asc .box { outline: 1px solid #f5c542; outline-offset: -1px; }
+.card.desc .box { outline: 1px solid #2fae6a; outline-offset: -1px; }
 .link-s.link-up, .link-c.link-up { stroke: #FFD700; stroke-width: 4; }
 .link-s.link-down, .link-c.link-down { stroke: #2f80ed; stroke-width: 4; }
 /* Хамаарлын шугамын өнгө: хүүхэд — ногоон, ах/дүү — бүдэг цэнхэр,
@@ -739,7 +740,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=287"></script>
+<script src="/tree_client.js?v=351"></script>
 </body>
 </html>`;
 }

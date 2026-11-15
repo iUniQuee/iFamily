@@ -518,7 +518,7 @@
     if (focus == null) {
       // «БҮТЭН МОД»: үеийн ХАТУУ мөр (серверээс) — Row 1, Row 2, Row 3 …
       const me = (S.viewer && S.viewer.member_id) || null;
-      if (fullL && me && fullL.viewer === me) return fullL;
+      if (fullL && me != null && Number(fullL.viewer) === Number(me)) return fullL;
       return S.layout;
     }
     return (focus != null && focusL && focusL.focus === focus) ? focusL : S.layout;
@@ -565,7 +565,7 @@
     // Нүүр зураг байвал эхний үсэг/emoji-ний оронд ЗУРГАА харна
     const avUrl = m.photo || avatarUrl(m);
     const ava = avUrl
-      ? '<img class="ava" src="' + escapeHtml(avUrl) + '" alt="" loading="lazy">'
+      ? '<img class="ava" src="' + escapeHtml(avUrl) + '" alt="" loading="lazy" decoding="async">'
       : '<div class="ava">' + (m.emoji ? escapeHtml(m.emoji) : escapeHtml(initial)) + '</div>';
     const cls = ['card', m.sex === 'f' ? 'f' : m.sex === 'm' ? 'm' : 'q'];
     const isDead = m.alive === 0 || !!(m.death_date && String(m.death_date).trim());
@@ -750,15 +750,8 @@
         // хосыг холбосон шугам (картын голын өндөр) хүртэл дээш сунгана —
         // «хосын шугамаас доош буусан» хэсэг нэг БҮТЭН босоо шугам болж,
         // картын доод ирмэг хүртэл завсар үлдэхгүй.
-        if (pn.length === 2 && Math.abs(pn[0].y - pn[1].y) < 4) {
-          const L = (pn[0].x <= pn[1].x) ? pn[0] : pn[1];
-          const R = (L === pn[0]) ? pn[1] : pn[0];
-          const gapL = L.x + (L.w || CW), gapR = R.x;
-          const coupleY = Math.min(pn[0].y, pn[1].y) + CH / 2;
-          if (stemX >= gapL - 2 && stemX <= gapR + 2 && coupleY >= pTop && coupleY < stemY0) {
-            stemY0 = coupleY;
-          }
-        }
+        // Бүх холбоос ижил өндөртэй байхын тулд шугмыг картын доод ирмэгээс
+        // (тавцангийн доороос) эхлүүлнэ — хосын шугам хүртэл дээш сунгахгүй.
         svg += '<path class="link-s' + busCls + '" d="M ' + stemX + ' ' + stemY0 + ' L ' + stemX + ' ' + bY + '"/>';
         if (bx2 > bx1) svg += '<path class="link-s' + busCls + '" d="M ' + bx1 + ' ' + bY + ' L ' + bx2 + ' ' + bY + '"/>';
         // Салаа нь тавцангийн шугамаас (e.y1) эхэлж, карт хүртэл ТАСРАЛГҮЙ
@@ -869,7 +862,9 @@
     revealed = new Set(); collapsed = new Set(); closedFams = new Set();
     openMid = 0; showHidden = false; selected = null;
     const p = $('panel'); if (p) p.classList.add('hidden');
-    fullOpen = (openId != null && nodes.has(openId)) ? openId : null;
+    // Нэвтрэхэд/«Үндсэн мод»-оор ороход өөрийн (нээсэн) хүний салбар
+    // шууд нээлттэй байна — тэр хүн ах/дүү нарынхаа хамгийн баруун захad гарна.
+    fullOpen = (openId != null) ? openId : null;
     fullClosed = false;
     render();
     await loadFullLayout();
@@ -909,6 +904,9 @@
       return;
     }
     h += '<button onclick="window.__mainTree()" title="Бүх модыг бүтнээр харах">🌳 Үндсэн мод</button>';
+    if (S.viewer.member_id || role === 'admin' || role === 'super') {
+      h += '<a class="btn" href="/udam" title="Зөвхөн таны цусан хамаатан">🌳 Удам мод</a>';
+    }
     // «👤 <нэр>» — өөрийн карт руу буцах. Логин хийсэн үеийн үйлдэлтэй ижил:
     // карт нь идэвхтэй (selected) болж, дэлгэцийн голд фокуслана.
     h += '<button onclick="window.__reminders()">🎂 Сануулга</button>';
@@ -1413,6 +1411,31 @@ function genitiveName(name) {
     requestAnimationFrame(() => centerOn(id));
   }
 
+  // Дарсан хүнийг ХАНЬ, ШУУД ХҮҮХДҮҮДТЭЙ нь хамт багтаана — хүүхдүүд
+  // дэлгэцээс доош гарч алга болохгүй, картын хэмжээ хэт томрохгүй.
+  function zoomFamily(id) {
+    const vp = $('viewport');
+    const ns = (activeLayout().nodes || []);
+    const n = ns.find(x => x.id === id);
+    if (!vp || !n) { fit(); return; }
+    const ids = new Set([id]);
+    for (const s of spOf.get(id) || []) ids.add(s);
+    for (const k of kidsOf.get(id) || []) ids.add(k);
+    const box = ns.filter(x => ids.has(x.id));
+    const x1 = Math.min(...box.map(x => x.x));
+    const x2 = Math.max(...box.map(x => x.x + (x.w || 156)));
+    const y1 = Math.min(...box.map(x => x.y));
+    const y2 = Math.max(...box.map(x => x.y + 118));
+    const w = Math.max(200, x2 - x1), h = Math.max(160, y2 - y1);
+    const z = Math.max(0.3, Math.min(1.1,
+      Math.min((vp.clientWidth - 40) / w, (vp.clientHeight - 90) / h)));
+    if (!isFinite(z) || !isFinite(x1) || !isFinite(y1)) { fit(); return; }
+    view.z = z;
+    view.x = vp.clientWidth / 2 - ((x1 + x2) / 2) * z;
+    view.y = vp.clientHeight / 2 - ((y1 + y2) / 2) * z;
+    applyView();
+  }
+
   // ---------- фокус-горим ----------
   window.__setFocus = (id, opts) => {
     if (id != null && !nodes.has(id)) {
@@ -1506,7 +1529,8 @@ function genitiveName(name) {
     const seq = ++fullSeq;
     try {
       const url = '/api/full-layout?id=' + me +
-        (fullOpen ? '&open=' + fullOpen + (fullClosed ? '&closed=1' : '') : '');
+        (fullOpen ? '&open=' + fullOpen + (fullClosed ? '&closed=1' : '') : '') +
+        '&_=' + Date.now();
       const L = await getJson(url);
       if (seq !== fullSeq || !L || !(L.nodes || []).length) return;
       fullL = L;
@@ -1546,6 +1570,53 @@ function genitiveName(name) {
       await loadFullLayout({ keepView: true });
     } catch (e) { toast(e.message); }
   };
+  // Сонгосон ах/дүүг мөрийнхөө ХАМГИЙН БАРУУН ЗАХАД зөөнө (байрлалын слот
+  // солилцоно). Ингэснээр дарсан хүн ах/дүү нарынхаа хамгийн ард гарч,
+  // ирээдүйд үр удам нэмэгдэхэд баруун тийш салбарлаx зай гарна.
+  function moveSiblingLast(id) {
+    if (!fullL || !fullL.nodes) return;
+    const n = fullL.nodes.find(x => x.id === id);
+    if (!n) return;
+    const pars = [...(parOf.get(id) || [])];
+    if (!pars.length) return;
+    const sibs = new Set();
+    for (const p of pars) for (const k of kidsOf.get(p) || []) if (k !== id) sibs.add(k);
+    const row = [...sibs].map(k => fullL.nodes.find(x => x.id === k))
+      .filter(x => x && Math.abs(x.y - n.y) < 4);
+    if (!row.length) return;
+    const last = row.sort((a, b) => a.x - b.x)[row.length - 1];
+    if (!last || last.x <= n.x) return;
+    // Хань/хүүхэд нь хамт харагдаж байгаа бол дан картыг зөөхгүй — шугам тасрахгүй.
+    const visible = (k) => fullL.nodes.some(x => x.id === k);
+    const hasSpouse = (k) => [...(spOf.get(k) || [])].some(visible);
+    if (hasSpouse(id) || hasSpouse(last.id)) return;
+    const hasKids = (k) => [...(kidsOf.get(k) || [])].some(visible);
+    if (hasKids(id) || hasKids(last.id)) return;
+    const tx = n.x;
+    n.x = last.x; last.x = tx;
+    const a = nodes.get(id), b = nodes.get(last.id);
+    if (a && a !== n) a.x = n.x;
+    if (b && b !== last) b.x = last.x;
+  }
+  // Дарсан карт нь одоо нээлттэй байгаа хүний (эсвэл түүний хань/үр удам)
+  // хэсэгт байвал салбарыг дахин ачаалахгүй — зөвхөн тэр карт руу төвлөрнө.
+  // Ингэснээр «Сайнбаяр»/«Баяраа» дээр дарахад харагдац баруун тийш зөөгдөнө.
+  function inOpenBranch(id) {
+    const open = fullL && fullL.open;
+    if (open == null) return false;
+    if (id === open) return true;
+    if ((spOf.get(open) || new Set()).has(id)) return true;
+    const seen = new Set(), q = [...(kidsOf.get(open) || [])];
+    while (q.length) {
+      const x = q.shift();
+      if (seen.has(x)) continue;
+      seen.add(x);
+      if (x === id) return true;
+      if ((spOf.get(x) || new Set()).has(id)) return true;
+      for (const k of kidsOf.get(x) || []) q.push(k);
+    }
+    return false;
+  }
   window.__accordion = async (id) => {
     if (id == null || !nodes.has(id)) return;
     selected = id;
@@ -1556,7 +1627,6 @@ function genitiveName(name) {
       openMid = 0; showHidden = false;
       fullL = null; fullSeq++;
     }
-    // Ижил хүн дээр дахин дарвал түүний нээгдсэн хүүхдүүд хураагдана
     if (!wasFocus && fullL && fullL.open === id) {
       await window.__fullOpen(id);
       render();
@@ -1566,7 +1636,7 @@ function genitiveName(name) {
     if (!(S.viewer && S.viewer.member_id)) { render(); return; }
     await loadFullLayout({ keepView: true });
     render();
-    zoomOn(id);
+    zoomFamily(id);
   };
   window.__fullOpen = async (id) => {
     if (!fullL || id == null) return;
@@ -1574,13 +1644,17 @@ function genitiveName(name) {
     // хоёр талын эцэг/эх харагдана). Ингэснээр нөгөө тал руу буцах зам бий.
     // «Би» дээр дарахад ч мөн өөрийн гэр бүлийн харагдац нээгдэнэ (бүтэн мод
     // руу буцах нь «← Бүтэн мод» товчоор).
-    if ((fullL.openable || []).indexOf(id) < 0) return;   // нээгдэх салбар биш
-    if (fullL.open === id) {
-      // ДАХИН ДАРАХАД ХУРААХ/НЭЭХ (toggle): ижил хүн дээр 2 дахь даралтад
-      // түүний шууд хүүхдүүд нуугдана; 3 дахь даралтад буцаад дэлэгдэнэ.
-      fullClosed = !fullClosed;
-      await loadFullLayout({ keepView: true });
+    if ((fullL.openable || []).indexOf(id) < 0) {
+      // Салбар нээгдэхгүй карт (жишээ нь «Би») дээр дарахад ч тухайн карт
+      // руу төвлөрнө — аав/ээж дээр дарахад шиг л харагдац зөөгдөнө.
       zoomOn(id);
+      return;
+    }
+    if (fullL.open === id) {
+      // Дахин дарахад ХУРААХГҮЙ — хүүхдүүд нь үргэлж нээлттэй харагдана.
+      fullClosed = false;
+      await loadFullLayout({ keepView: true });
+      zoomFamily(id);
       return;
     }
     const before = new Set(((fullL && fullL.nodes) || []).map(n => n.id));
@@ -1595,7 +1669,7 @@ function genitiveName(name) {
     const added = ((fullL && fullL.nodes) || []).map(n => n.id).filter(x => !before.has(x));
     // Бүх мод багтаахын оронд дарсан хүн дээрээ төвлөрнө — түүний хань,
     // хүүхэд дэлгэцийн голд уншигдахуйц хэмжээтэй гарна.
-    zoomOn(id);
+    zoomFamily(id);
     if (added.length) toast('👥 ' + added.length + ' хүн нэмэгдлээ');
   };
   // Бүтэн мод руу буцах: нээсэн салбарыг хааж, бүх гишүүнийг харуулна
@@ -1694,7 +1768,7 @@ function genitiveName(name) {
       body += item('📜', 'Аудит', 'Хийсэн үйлдлийн түүх', '__audit');
       body += item('👥', 'Эрх', 'Хэрэглэгчийн эрх, карт холбох', '__users');
     }
-    body += item('🔗', 'Холбоогүй', 'Модтой холбогдоогүй гишүүд, давхар нэрс', '__orphans');
+    body += item('🔗', 'Холбоогүй / Давхар', 'Модтой холбогдоогүй гишүүд, давхар ба төстэй нэрс', '__orphans');
     body += item('🔔', 'Мэдэгдэл', 'Шинэ бүртгэл, хүсэлтийг утсанд мэдэгдэх', '__pushPage');
     openModal('⚙️ Админ', body, '<button onclick="window.__closeModal()">Хаах</button>');
   };
@@ -1704,12 +1778,17 @@ function genitiveName(name) {
     try {
       const j = await getJson('/api/admin/orphans?t=' + Date.now());
       const iso = j.isolated || [];
-      // Зөвхөн дотор нь холбоогүй бичлэг байгаа давхар нэрсийг онцолно.
-      const dup = (j.duplicates || []).filter(g => g.members.some(m => !m.linked));
-      window.__orphanData = [
+      // Бүх давхар нэрийг харуулна — зөвхөн холбоогүй бичлэгтэйг биш.
+      const dup = j.duplicates || [];
+      const sim = j.similar || [];
+      const all = [
         ...iso.map(m => ({ ...m, linked: false })),
-        ...dup.flatMap(g => g.members)
+        ...dup.flatMap(g => g.members),
+        ...sim.flatMap(g => g.members)
       ];
+      const byMemberId = new Map();
+      for (const m of all) byMemberId.set(Number(m.id), m);
+      window.__orphanData = [...byMemberId.values()];
       const row = (m) => {
         const meta = [
           m.sex === 'f' ? 'эмэгтэй' : m.sex === 'm' ? 'эрэгтэй' : '',
@@ -1723,23 +1802,41 @@ function genitiveName(name) {
           '<button onclick="window.__closeModal();window.__goto(' + m.id + ')">Нээх</button>' +
           '<button class="danger" onclick="window.__orphanDel(' + m.id + ')">🗑 Устгах</button></div>';
       };
+      const dateOf = (m) => m.birth_date || m.birth_year || '—';
+      const groupMember = (m) => '<div class="list-row" style="align-items:flex-start">' +
+        '<span class="grow"><b>' + escapeHtml(m.name || '(нэргүй)') + '</b> ' +
+        '<span style="opacity:.6">#' + m.id + '</span> ' +
+        '<span style="font-size:10px;border:1px solid currentColor;border-radius:8px;padding:0 5px;opacity:.75">' +
+        (m.linked ? 'модтой' : 'холбоогүй') + '</span>' +
+        '<div style="font-size:11px;opacity:.65">' + escapeHtml(dateOf(m)) +
+        (m.created_at ? ' · үүссэн ' + escapeHtml(String(m.created_at).slice(0, 16)) : '') + '</div></span>' +
+        '<button onclick="window.__closeModal();window.__goto(' + m.id + ')">Нээх</button>' +
+        '<button class="danger" onclick="window.__orphanDel(' + m.id + ')">🗑 Устгах</button></div>';
       let h = '<div class="rel-p">Модтой холбогдоогүй: <b>' + iso.length + '</b> / нийт ' +
-        (j.total || 0) + ' гишүүн</div>';
-      if (dup.length) {
-        h += '<div class="rel-sec">Давхар нэр (холбоогүй бичлэгтэй)</div>';
-        h += dup.map(g => '<div class="rel-p" style="margin-bottom:6px"><b>' +
-          escapeHtml(g.name) + '</b> — ' + g.members.length + ' бичлэг' +
-          '<div style="font-size:12px;opacity:.8;margin-top:4px">' +
-          g.members.map(m => '<span style="display:inline-flex;align-items:center;gap:4px;margin:2px 8px 2px 0">' +
-            '#' + m.id + (m.linked ? ' (модтой)' : ' (холбоогүй)') +
-            '<button class="danger" style="padding:2px 6px;font-size:11px" onclick="window.__orphanDel(' + m.id + ')">🗑</button></span>').join('') +
-          '</div></div>').join('');
-      }
+        (j.total || 0) + ' гишүүн · давхар нэр: <b>' + dup.length + '</b> · төстэй: <b>' + sim.length + '</b></div>';
+      h += '<div class="rel-sec">Давхар нэр (' + dup.length + ')</div>';
+      h += dup.length ? dup.map(g => '<div class="rel-p" style="margin-bottom:6px"><b>' +
+        escapeHtml(g.name) + '</b> — ' + g.members.length + ' бичлэг' +
+        (g.parent ? ' · <span style="font-size:11px;opacity:.7">' + escapeHtml(g.parent) + '</span>' : '') +
+        '<div style="font-size:11px;opacity:.7">' +
+        (g.year ? 'Ижил нэр, ижил төрсөн он' : 'Ижил нэр') +
+        (g.parent && g.parent !== 'эцэг/эх тодорхойгүй' ? ', ижил эцэг/эхтэй' : ' · эцэг/эх тодорхойгүй') +
+        '. Аль нь давхар болохыг шалгана уу.</div>' +
+        g.members.map(groupMember).join('') + '</div>').join('')
+        : '<div style="opacity:.7">Байхгүй.</div>';
+      h += '<div class="rel-sec">Ижил нэр + төрсөн он (' + sim.length + ')</div>';
+      h += sim.length ? '<div style="font-size:11px;opacity:.7;margin-bottom:6px">Эцгийн нэр/инициал өөр бичигдсэн ч эцэг/эх эсвэл эцгийн нэр ижил байгаа бичлэгүүд.</div>' +
+        sim.map(g => '<div class="rel-p" style="margin-bottom:6px"><b>' +
+          escapeHtml(g.given) + '</b> · ' + escapeHtml(g.year) + ' — ' + g.members.length + ' бичлэг' +
+          (g.reason ? ' · <span style="font-size:11px;opacity:.7">' + escapeHtml(g.reason) + '</span>' : '') +
+          (g.parent ? '<div style="font-size:11px;opacity:.7">' + escapeHtml(g.parent) + '</div>' : '') +
+          g.members.map(groupMember).join('') + '</div>').join('')
+        : '<div style="opacity:.7">Байхгүй.</div>';
       h += '<div class="rel-sec">Холбоогүй гишүүд</div>';
       h += iso.length ? iso.map(row).join('') : '<div style="opacity:.7">Байхгүй.</div>';
-      openModal('🔗 Холбоогүй гишүүд',
-        '<div data-orphans="1" style="max-height:60vh;overflow:auto">' + h +
-        '<div style="font-size:11px;opacity:.65;margin-top:8px">Шинээр нэмэгдсэн холбоогүй гишүүд 5 секунд тутам автоматаар энд орж ирнэ.</div></div>',
+      openModal('🔗 Холбоогүй ба давхар гишүүд',
+        '<div data-orphans="1" style="max-height:64vh;overflow:auto">' + h +
+        '<div style="font-size:11px;opacity:.65;margin-top:8px">5 секунд тутам автоматаар шинэчлэгдэнэ. «Төстэй» нь баталгаа биш — нээж шалгаад л устгана уу.</div></div>',
         '<button onclick="window.__orphans()">↻ Шинэчлэх</button>' +
         '<button onclick="window.__closeModal()">Хаах</button>');
       // Жагсаалт нээлттэй үед автоматаар шинэчилнэ (шинэ гишүүн нэмэгдэхэд ч).
@@ -2930,6 +3027,10 @@ function genitiveName(name) {
         }
       } catch (e) {}
       showPendingBanner();
+      // 🎂 Өнөөдрийн төрсөн өдрийн мэдэгдлийг серверээр нэг удаа шалгуулна
+      try {
+        fetch('/api/birthday/notify', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+      } catch (e) { /* push дэмжихгүй бол алгасна */ }
     }, 700);
   });
   // --- PWA: service worker + шууд суулгах ---
@@ -3008,6 +3109,11 @@ function genitiveName(name) {
             : 'Хэрэв цонх гарахгүй бол: <b>Android Chrome</b> ⋮ цэс → «Апп суулгах», <b>iPhone Safari</b> ⬆ → «Дэлгэцэнд нэмэх».') +
           '</div>';
       }
+      h += '<label class="f" style="margin-top:14px">🔔 Төрсөн өдрийн мэдэгдэл</label>';
+      h += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:6px">' +
+        'Хамааралтай хүний төрсөн өдөр өглөө 09:00-д «Аавынхан» нэртэй мэдэгдэл ирнэ.' +
+        '</div>' +
+        '<button class="primary" style="width:100%" onclick="window.__pushOn()">🔔 Мэдэгдэл асаах</button>';
       openModal('👤 Миний профайл', h, '<button onclick="window.__closeModal()">Хаах</button>');
     } catch (e) { toast(e.message); }
   };
@@ -3154,9 +3260,10 @@ function genitiveName(name) {
     usersPage = Number(p) || 0;
     renderUsersModal();
   };
-  // Өөр админ зэрэг ажиллаж болох тул: хуучин хариу шинийг дарж болохгүй (seq),
-  // цонх нээлттэй үед 10 секунд тутам өөрөө шинэчилнэ.
-  let usersSeq = 0, usersPollT = 0;
+  // Өөр админ зэрэг ажиллаж болох тул: хуучин хариу шинийг дарж болохгүй (seq).
+  // Цонхыг автоматаар 10 секунд тутам шинэчлэхгүй — админ «⟳ Шинэчлэх»-ээр
+  // эсвэл цонхыг дахин нээхэд л шинэ хүсэлт харагдана.
+  let usersSeq = 0;
   window.__users = async (silent) => {
     const seq = ++usersSeq;
     try {
@@ -3167,15 +3274,6 @@ function genitiveName(name) {
       if (seq !== usersSeq) return;              // хоцорсон хариу — алгасна
       usersData = { j, rq };
       renderUsersModal();
-      if (!usersPollT) {
-        usersPollT = setInterval(() => {
-          const mr = document.getElementById('modalroot');
-          if (!mr || mr.classList.contains('hidden') || !mr.querySelector('[data-users]')) {
-            clearInterval(usersPollT); usersPollT = 0; return;
-          }
-          window.__users(true);
-        }, 10000);
-      }
     } catch (e) { if (!silent) toast(e.message); }
   };
   window.__setRole = async (id, role) => {
