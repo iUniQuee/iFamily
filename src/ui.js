@@ -63,7 +63,11 @@ html[data-theme="midnight"] {
   gap: 10px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line);
   z-index: 60; box-shadow: var(--shadow);
 }
-.brand { font-weight: 800; font-size: 16px; white-space: nowrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px;
+  white-space: nowrap; color: #0F172A; letter-spacing: -.01em; }
+.brand-badge { width: 30px; height: 30px; border-radius: 10px; background: #ECFDF5; color: #059669;
+  display: grid; place-items: center; flex: 0 0 30px; }
+.brand-badge svg { width: 18px; height: 18px; }
 /* Мэню: утсан дээр доошоо/дээшээ гуйхгүй — ХОЙШОО (хэвтээ) гүйлгэнэ */
 #topbtns {
   display: flex; gap: 6px; flex-wrap: nowrap; flex: 1; min-width: 0;
@@ -72,7 +76,28 @@ html[data-theme="midnight"] {
 }
 #topbtns::-webkit-scrollbar { display: none; height: 0; }
 #topbtns > * { flex: 0 0 auto; }
-#who { color: var(--muted); font-size: 13px; white-space: nowrap; }
+/* Мэнюгийн зүйл — хүрээгүй, зөөлөн pill. Идэвхтэй үзэл emerald pill-ээр. */
+#topbtns .nav-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: transparent; color: #475569;
+  font-size: 13px; font-weight: 600; border-radius: 999px; padding: 7px 11px;
+  box-shadow: none; letter-spacing: -.01em;
+}
+#topbtns .nav-item:hover { background: #F1F5F9; color: #0F172A; border: 0; }
+#topbtns .nav-item.on { background: #ECFDF5; color: #047857; font-weight: 650; }
+#topbtns .nav-item.on:hover { background: #D1FAE5; color: #047857; }
+#topbtns .nav-item svg { flex: 0 0 auto; }
+#topbtns .nav-item.nav-primary { background: #059669; color: #fff; font-weight: 700; }
+#topbtns .nav-item.nav-primary:hover { background: #047857; color: #fff; }
+#who { display: flex; align-items: center; gap: 8px; margin-left: auto;
+  color: var(--muted); font-size: 13px; white-space: nowrap; padding-left: 6px; }
+.who-name { color: #94A3B8; font-size: 12.5px; }
+.who-name b { color: #334155; font-weight: 650; }
+.nav-logout {
+  display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent;
+  color: #64748B; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 7px 11px;
+}
+.nav-logout:hover { background: #FEF2F2; color: #DC2626; border-color: transparent; }
 button, .btn {
   border: 1px solid var(--line); background: var(--panel); color: var(--text);
   border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer;
@@ -718,7 +743,7 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 @media (max-width: 640px) {
   #top { height: 48px; padding: 0 8px; gap: 6px; }
   .brand { font-size: 13.5px; }
-  #who { display: none; }
+  #who .who-name { display: none; }
   #topbtns { gap: 5px; }
   #topbtns button, #topbtns .btn, #topbtns select { padding: 5px 8px; font-size: 12.5px; }
   .center { inset: 48px 0 0 0; }
@@ -1219,7 +1244,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="splash"><img src="/icon-512.png" alt="iFamily"><div class="spt">iFamily</div><div class="spsub">Угийн мод</div><div class="sps"></div></div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var s=document.getElementById('splash');if(s){s.style.opacity='0';setTimeout(function(){s.remove()},350)}},450);setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove()},9000)});</script>
 <header id="top">
-  <div class="brand">🌳 iFamily</div>
+  <div class="brand"><span class="brand-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></span><span>iFamily</span></div>
   <div id="topbtns"></div>
   <div id="who"></div>
 </header>
@@ -1251,7 +1276,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=453"></script>
+<script src="/tree_client.js?v=454"></script>
 </body>
 </html>`;
 }

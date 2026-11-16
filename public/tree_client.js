@@ -1090,22 +1090,44 @@
   function roleName(r) {
     return { super: 'Супер админ', admin: 'Админ', coord: 'Зохицуулагч', member: 'Гишүүн' }[r] || r;
   }
+  // Мэнюгийн Lucide дүрснүүд (16px, нэг ижил stroke) — emoji-г орлоно.
+  const NAVI = {
+    trees: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6"/><path d="M13 19v3"/><path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5"/></svg>',
+    cake: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>',
+    trophy: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    user: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    logout: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
+    idcard: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><line x1="6" x2="6" y1="15" y2="15"/><line x1="10" x2="14" y1="15" y2="15"/></svg>',
+    eyeoff: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>',
+    users: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+  };
+  const navBtn = (icon, label, onclick, opts) => {
+    opts = opts || {};
+    return '<button class="nav-item' + (opts.on ? ' on' : '') + (opts.primary ? ' nav-primary' : '') + '"' +
+      (opts.title ? ' title="' + opts.title + '"' : '') +
+      ' onclick="' + onclick + '">' + icon + (label ? '<span>' + label + '</span>' : '') + '</button>';
+  };
+  const logoutBtn = () => '<button class="nav-logout" title="Гарах" onclick="window.__logout()">' + NAVI.logout + '<span>Гарах</span></button>';
+  function whoHtml(name, roleTxt) {
+    return '<span class="who-name">' + escapeHtml(name || '') +
+      (roleTxt ? ' <b>· ' + escapeHtml(roleTxt) + '</b>' : '') + '</span>' + logoutBtn();
+  }
   function renderTop() {
     const tb = $('topbtns'), who = $('who');
     if (RO) {
       tb.innerHTML = '<a class="btn" href="/">Нэвтрэх</a>';
-      who.textContent = 'Нийтийн холбоо';
+      who.innerHTML = '<span class="who-name">Нийтийн холбоо</span>';
       return;
     }
-    if (!S.viewer) { tb.innerHTML = ''; who.textContent = ''; return; }
+    if (!S.viewer) { tb.innerHTML = ''; who.innerHTML = ''; return; }
     const role = S.viewer.role;
     let h = '';
     if (S.awaiting) {
-      h += '<button class="primary" onclick="window.__linkReq()">📇 Карт холбох хүсэлт</button>';
-      h += '<button onclick="window.__profile()">👤 Профайл</button>';
-      h += '<button onclick="window.__logout()">Гарах</button>';
+      h += navBtn(NAVI.idcard, 'Карт холбох хүсэлт', 'window.__linkReq()', { primary: true });
+      h += navBtn(NAVI.user, 'Профайл', 'window.__profile()');
       tb.innerHTML = h;
-      who.textContent = (S.viewer.name || '') + (S.pending_req ? ' · хүсэлт илгээсэн' : '');
+      who.innerHTML = whoHtml((S.viewer.name || '') + (S.pending_req ? ' · хүсэлт илгээсэн' : ''), '');
       const st = $('lr_status');
       // Хүсэлт илгээсэн бол аль карт руу, хэзээ илгээснийг pill хэлбэрээр харуулна
       if (st) st.innerHTML = S.pending_req
@@ -1113,29 +1135,23 @@
         : '';
       return;
     }
-    h += '<button onclick="window.__mainTree()" title="Бүх модыг бүтнээр харах">🌳 Үндсэн мод</button>';
-    // «🌳 Удам мод» товч ОДООХОНДО НУУГДСАН (хэрэглэгчдэд харагдахгүй).
-    // Дахин нээх бол доорх 3 мөрийг сэргээнэ үү:
-    // if (S.viewer.member_id || role === 'admin' || role === 'super') {
-    //   h += '<a class="btn" href="/udam" title="Зөвхөн таны цусан хамаатан">🌳 Удам мод</a>';
-    // }
-    // «👤 <нэр>» — өөрийн карт руу буцах. Логин хийсэн үеийн үйлдэлтэй ижил:
-    // карт нь идэвхтэй (selected) болж, дэлгэцийн голд фокуслана.
-    h += '<button onclick="window.__reminders()">🎂 Сануулга</button>';
-    h += '<button onclick="window.__scores()">🏆 Оноо</button>';
-    // Админтай холбоотой БҮХ зүйл — НЭГ «⚙️ Админ» хуудсанд
-    // (Зургийн цомог ч зөвхөн админд харагдана)
+    // Идэвхтэй үзэл (мод) — зөөлөн emerald pill; бусад нь хүрээгүй, саарал.
+    h += navBtn(NAVI.trees, 'Үндсэн мод', 'window.__mainTree()', { on: true, title: 'Бүх модыг бүтнээр харах' });
+    // «Удам мод» товч ОДООХОНДО НУУГДСАН (хэрэглэгчдэд харагдахгүй).
+    h += navBtn(NAVI.cake, 'Сануулга', 'window.__reminders()');
+    h += navBtn(NAVI.trophy, 'Оноо', 'window.__scores()');
+    // Админтай холбоотой БҮХ зүйл — НЭГ «Админ» хуудсанд
     if (role === 'admin' || role === 'super') {
-      h += '<button onclick="window.__adminPage()" title="Админ: дизайн, backup, Excel, импорт, аудит, эрх">⚙️ Админ</button>';
+      h += navBtn(NAVI.settings, 'Админ', 'window.__adminPage()', { title: 'Админ: дизайн, backup, Excel, импорт, аудит, эрх' });
     }
     if (focus != null) {
-      if (showHidden) h += '<button title="Нуугдсан хүмүүсийг дахин нуух" onclick="window.__hideHidden()">🙈 Нуу</button>';
-      else if (hiddenCount > 0) h += '<button title="Нуугдсан ' + hiddenCount + ' хүнийг нээх" onclick="window.__revealHidden()">👥 ' + hiddenCount + '</button>';
+      if (showHidden) h += navBtn(NAVI.eyeoff, 'Нуу', 'window.__hideHidden()', { title: 'Нуугдсан хүмүүсийг дахин нуух' });
+      else if (hiddenCount > 0) h += navBtn(NAVI.users, String(hiddenCount), 'window.__revealHidden()', { title: 'Нуугдсан ' + hiddenCount + ' хүнийг нээх' });
     }
-    h += '<button onclick="window.__profile()">👤 Профайл</button>';
-    h += '<button onclick="window.__logout()">Гарах</button>';
+    h += navBtn(NAVI.user, 'Профайл', 'window.__profile()');
     tb.innerHTML = h;
-    who.textContent = (S.viewer.name || '') + ' · ' + roleName(role);
+    // Хэрэглэгчийн нэр · эрх ба «Гарах» — баруун захад бүлэглэнэ
+    who.innerHTML = whoHtml(S.viewer.name, roleName(role));
   }
 
   // ---------- view: пан/зум/пинч ----------
