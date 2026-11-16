@@ -1561,15 +1561,20 @@ function genitiveName(name) {
     // Устгах үйлдэл зөвхөн админ/супер админд (буруу дараад бүгдийг устгахаас сэргийлнэ)
     const isBoss = !!(S.viewer && (S.viewer.role === 'admin' || S.viewer.role === 'super'));
     // kind (parent/spouse/child) өгвөл буруу холбоосыг устгах «✕» товч гарна
+    // Чип ба түүнийг устгах «✕» нь НЭГ inline-flex блок (rel-unit) дотор —
+    // ингэснээр ✕ нь чипээсээ салж, доош ганцаараа шилжихгүй.
     const relList = (arr, kind) => arr.length
-      ? arr.map(x => '<span onclick="window.__goto(' + x.id + ')">' + escapeHtml(x.name) +
-        (kinRel && kinRel.get(x.id) && kinRel.get(x.id) !== 'Хамаатан' && kinRel.get(x.id) !== 'Энэ хүн'
-          ? ' <b style="color:#2fae6a">(' + escapeHtml(kinRel.get(x.id)) + ')</b>' : '') +
-        ' <i style="opacity:.6">' + escapeHtml(String(x.birth_date ? x.birth_date.slice(0, 4) : (x.birth_year || ''))) + '</i></span>' +
-        ((kind && isBoss)
-          ? '<button class="ghost" title="Буруу холбоосыг устгах" style="padding:0 4px;margin:0 0 0 2px;font-size:11px" ' +
+      ? arr.map(x => {
+        const chip = '<span onclick="window.__goto(' + x.id + ')">' + escapeHtml(x.name) +
+          (kinRel && kinRel.get(x.id) && kinRel.get(x.id) !== 'Хамаатан' && kinRel.get(x.id) !== 'Энэ хүн'
+            ? ' <b style="color:#2fae6a">(' + escapeHtml(kinRel.get(x.id)) + ')</b>' : '') +
+          ' <i style="opacity:.6">' + escapeHtml(String(x.birth_date ? x.birth_date.slice(0, 4) : (x.birth_year || ''))) + '</i></span>';
+        const delBtn = (kind && isBoss)
+          ? '<button class="ghost" title="Буруу холбоосыг устгах" style="padding:0 4px;margin:0;font-size:11px" ' +
             'onclick="event.stopPropagation();window.__unlink(\'' + kind + '\',' + m.id + ',' + x.id + ')">✕</button>'
-          : '')).join('')
+          : '';
+        return '<div class="rel-unit">' + chip + delBtn + '</div>';
+      }).join('')
       : '<span style="opacity:.5;border-style:dashed">байхгүй</span>';
     const avUrl = m.photo || avatarUrl(m);
     let h = '<h2>' + (avUrl
@@ -1596,7 +1601,7 @@ function genitiveName(name) {
       const xph = d.photos || [];
       const xev = d.events || [];
       // Зургийн хэсэг — хоосон ч харагдана; засах эрхтэй бол «＋» тавьж нэмнэ
-      h += '<div class="rel-h">🖼 Нэмэлт зураг (' + xph.length + '/5)</div><div class="rel-p">' +
+      h += '<div class="rel-h">Нэмэлт зураг (' + xph.length + '/5)</div><div class="rel-p">' +
         xph.map(p => '<span onclick="window.__photoView(' + m.id + ',' + p.id + ')" style="cursor:zoom-in;padding:0;line-height:0;border:0"><img src="' +
           escapeHtml(p.url) + '" alt="" style="width:46px;height:46px;object-fit:cover;border-radius:8px;display:block"></span>').join('') +
         (m.e && xph.length < 5
@@ -1617,15 +1622,21 @@ function genitiveName(name) {
     h += '<div class="rel-h">Ах / Дүү</div><div class="rel-p">' + relList(rel.siblings, 'sibling') + '</div>';
     h += '<div class="rel-h">Хань</div><div class="rel-p">' + relList(rel.spouses, 'spouse') + '</div>';
     h += '<div class="rel-h">Хүүхэд</div><div class="rel-p">' + relList(rel.children, 'child') + '</div>';
+    // Үйлдлийн товчнууд: «Садан нэмэх» бүтэн өргөнөөр дээр, бусад 4 нь 2x2
+    // тороор доор. «Фокус» товч хасагдсан (карт дээр давхар дарахад фокус орно).
+    const ICO = {
+      plus: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
+      pencil: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      image: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-4.6-4.6L7 20"/></svg>',
+      cal: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg>',
+      trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>'
+    };
     h += '<div class="pbtns">';
-    if (m.e) h += '<button class="primary" onclick="window.__menu(event,' + m.id + ')">＋ Садан нэмэх</button>';
-    h += '<button onclick="window.__setFocus(' + m.id + ')">🔍 Фокус</button>';
-    if (m.e) {
-      h += '<button onclick="window.__edit(' + m.id + ')">✎ Засах</button>';
-      h += '<button onclick="window.__addMemPhoto(' + m.id + ')">🖼 Зураг</button>';
-      h += '<button onclick="window.__addMemEvent(' + m.id + ')">📅 Үйл явдал</button>';
-      if (isBoss) h += '<button class="danger" onclick="window.__del(' + m.id + ')">🗑 Устгах</button>';
-    }
+    if (m.e) h += '<button class="pfull" onclick="window.__menu(event,' + m.id + ')">' + ICO.plus + 'Садан нэмэх</button>';
+    if (m.e) h += '<button class="psoft" onclick="window.__edit(' + m.id + ')">' + ICO.pencil + 'Засах</button>';
+    if (m.e) h += '<button class="psoft" onclick="window.__addMemPhoto(' + m.id + ')">' + ICO.image + 'Зураг</button>';
+    if (m.e) h += '<button class="psoft" onclick="window.__addMemEvent(' + m.id + ')">' + ICO.cal + 'Үйл явдал</button>';
+    if (m.e && isBoss) h += '<button class="pdanger" onclick="window.__del(' + m.id + ')">' + ICO.trash + 'Устгах</button>';
     h += '</div>';
     h += birthInfoHtml(m);
     panel.classList.remove('hidden');

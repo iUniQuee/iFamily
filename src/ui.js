@@ -215,13 +215,32 @@ html[data-card="best"] .card.focus .box { outline: 1px solid #2fae6a; outline-of
 .kv b { color: var(--muted); font-weight: 600; }
 .rel-h { margin: 12px 0 4px; font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
 .rel-p { display: flex; flex-wrap: wrap; gap: 5px; }
+/* Чип ба түүнийг устгах «✕» — НЭГ inline-flex блок тул ✕ нь чипээсээ
+   салж доош ганцаараа шилжихгүй. */
+.rel-unit { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
 .rel-p span {
   font-size: 12px; border: 1px solid var(--line); border-radius: 12px;
   padding: 3px 9px; cursor: pointer; background: var(--bg);
 }
 .rel-p span:hover { border-color: var(--accent); color: var(--accent); }
+.rel-unit > span { min-width: 0; }
+.rel-unit > button.ghost { flex: 0 0 auto; line-height: 1.2; }
 .locked { font-size: 12px; color: var(--muted); background: var(--bg); border: 1px dashed var(--line); padding: 8px; border-radius: 8px; margin: 6px 0; }
-.pbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+/* Үйлдлийн товчнууд: «Садан нэмэх» бүтэн өргөн, бусад нь 2x2 тор */
+.pbtns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.pbtns > button {
+  width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 10px; font-size: 12.5px; font-weight: 650; border-radius: 10px; line-height: 1.1;
+}
+.pbtns > button.pfull {
+  grid-column: 1 / -1; background: #059669; border: 1px solid #059669; color: #fff;
+  font-size: 13.5px; font-weight: 750; padding: 11px 12px;
+}
+.pbtns > button.pfull:hover { background: #047857; border-color: #047857; color: #fff; }
+.pbtns > button.psoft { background: #fff; border: 1px solid #E2E8F0; color: #334155; }
+.pbtns > button.psoft:hover { background: #F8FAFC; border-color: #CBD5E1; color: #0F172A; }
+.pbtns > button.pdanger { background: #FEF2F2; border: 1px solid #FECACA; color: #DC2626; }
+.pbtns > button.pdanger:hover { background: #FEE2E2; border-color: #FCA5A5; color: #B91C1C; }
 .hidden { display: none !important; }
 .center {
   position: fixed; inset: 52px 0 0 0; display: flex; flex-direction: column;
@@ -869,18 +888,18 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
   .sc-sec-first { margin-top: 0; }
 }
 /* ── Зурхайн картууд (картын дэлгэрэнгүй) ── */
-.zcard { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:14px 16px; margin-top:10px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
-.zh { font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; margin-bottom:10px; }
-.zrow { display:flex; gap:14px; align-items:flex-start; }
+.zcard { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:11px 13px; margin-top:8px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+.zh { font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; margin-bottom:7px; }
+.zrow { display:flex; gap:12px; align-items:flex-start; }
 .zrow.zrow-seat { align-items:center; }
-.zring { width:60px; height:60px; border-radius:50%; border:2px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; flex:0 0 auto; font-size:28px; line-height:1; }
+.zring { width:52px; height:52px; border-radius:50%; border:2px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; flex:0 0 auto; font-size:25px; line-height:1; }
 .zbody { min-width:0; flex:1; }
 .zbody h3 { font-size:15.5px; font-weight:800; color:#0f172a; margin:0; }
-.zmuted { font-size:11.5px; color:#64748b; margin:3px 0 0; }
-.zline { font-size:12.5px; color:#334155; margin:7px 0 0; font-weight:500; }
-.zsmall { font-size:11.5px; color:#475569; margin:7px 0 0; line-height:1.55; }
+.zmuted { font-size:11.5px; color:#64748b; margin:2px 0 0; }
+.zline { font-size:12.5px; color:#334155; margin:5px 0 0; font-weight:500; }
+.zsmall { font-size:11.5px; color:#475569; margin:5px 0 0; line-height:1.5; }
 .zsmall.znext { color:#64748b; }
-.zfoot { margin-top:12px; padding-top:9px; border-top:1px solid #f1f5f9; font-size:12px; color:#64748b; }
+.zfoot { margin-top:9px; padding-top:7px; border-top:1px solid #f1f5f9; font-size:12px; color:#64748b; }
 .zlock { font-size:12px; color:#6b7a90; background:#f3f7fd; border:1px dashed #c3d3ee; border-radius:10px; padding:8px 10px; }
 .zwheel { position:relative; width:144px; height:144px; flex:0 0 auto; }
 .zwring { position:absolute; inset:8px; border-radius:50%; border:1px solid #e2e8f0; }
@@ -891,10 +910,10 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 .zwl.on { background:#2563eb; color:#fff; padding:2px 7px; border-radius:999px; box-shadow:0 2px 4px rgba(37,99,235,.3); }
 .zstrong { color:#0f172a; font-weight:700; }
 .znextb { color:#2563eb; font-weight:800; }
-.zkvu { padding:2px 0; }
-.zkvu.zdiv { margin-top:10px; padding-top:10px; border-top:1px solid #f1f5f9; }
+.zkvu { padding:1px 0; }
+.zkvu.zdiv { margin-top:7px; padding-top:7px; border-top:1px solid #f1f5f9; }
 .zkvl { font-size:11px; font-weight:800; color:#94a3b8; letter-spacing:.2px; }
-.zkvv { font-size:12.5px; font-weight:600; color:#1e293b; margin-top:3px; line-height:1.5; }
+.zkvv { font-size:12.5px; font-weight:600; color:#1e293b; margin-top:2px; line-height:1.45; }
 @media (max-width:400px){ .zwheel{width:124px;height:124px} .zwcenter{width:48px;height:48px} .zring{width:52px;height:52px;font-size:24px} .zrow{gap:10px} }
 /* ---------- Түвшин ахих баяр хүргэлт ---------- */
 .lvup-wrap{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:rgba(6,18,12,.62);backdrop-filter:blur(4px);animation:lvFade .22s ease}
@@ -1232,7 +1251,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=452"></script>
+<script src="/tree_client.js?v=453"></script>
 </body>
 </html>`;
 }
