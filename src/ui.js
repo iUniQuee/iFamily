@@ -1218,7 +1218,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=448"></script>
+<script src="/tree_client.js?v=449"></script>
 </body>
 </html>`;
 }

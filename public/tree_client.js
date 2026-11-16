@@ -852,15 +852,22 @@
         }
         // Хосын шугам: сонгосон хүний хань бол НИЛ ЯГААН тодруулга
         const isSp = (relSel != null && (e.a === relSel || e.b === relSel));
+        // Хосын ХОЁР гишүүн ч шууд өвөг (эцэг/эх, өвөө/эмээ, элэнц …) бол зүрх нь
+        // АЛТ (#F59E0B) болж, цагаан дугуйн хүрээ нь зөөлөн алт (#FDE68A) болно.
+        const isUpPair = relUp(e.a) && relUp(e.b);
         svg += '<line class="link-s' + hlS(e.a, e.b) + (isSp ? ' link-sp' : '') + '" x1="' + sx1 + '" y1="' + sy1 + '" x2="' + sx2 + '" y2="' + sy2 + '"/>';
-        // Хосын шугамын голд цагаан дугуй + саарал зүрх. Бүх шугамаас хойш
+        // Хосын шугамын голд цагаан дугуй + зүрх. Бүх шугамаас хойш
         // зурдаг тул доош буух салаа зүрхний доороос эхэлсэн мэт харагдана.
+        // Өнгө: хань — нил ягаан, шууд өвөг — алт, бусад — саарал.
         {
           const hx = Math.round((sx1 + sx2) / 2), hy = Math.round((sy1 + sy2) / 2);
-          heartOverlay += '<g class="sp-heart"><circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="' +
-            (isSp ? '#8B5CF6' : '#CBD5E1') + '" stroke-width="' + (isSp ? '1.6' : '1') + '"/>' +
+          const hStroke = isSp ? '#8B5CF6' : isUpPair ? '#FDE68A' : '#CBD5E1';
+          const hFill = isSp ? '#8B5CF6' : isUpPair ? '#F59E0B' : '#94A3B8';
+          heartOverlay += '<g class="sp-heart' + (isSp ? ' sp-active' : isUpPair ? ' up-active' : '') + '">' +
+            '<circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="' +
+            hStroke + '" stroke-width="' + ((isSp || isUpPair) ? '1.6' : '1') + '"/>' +
             '<text x="' + hx + '" y="' + (hy + 3.5) + '" text-anchor="middle" font-size="11" fill="' +
-            (isSp ? '#8B5CF6' : '#94A3B8') + '">&#9829;</text></g>';
+            hFill + '">&#9829;</text></g>';
         }
       } else if (e.t === 'b') {
         // Хосын салбар: гол шугмаар → хэвтээ тавцан → хүүхэд бүрт салаа.
