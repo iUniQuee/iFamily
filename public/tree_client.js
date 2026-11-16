@@ -2235,6 +2235,8 @@ function genitiveName(name) {
   const LAZY_PHOTO = /^\/api\/members\/\d+\/photo$/i;
   function realPhoto(u) { return LAZY_PHOTO.test(String(u || '')) ? '' : String(u || ''); }
   const photoPrevHtml = (u) => (realPhoto(u) ? '<img src="' + escapeHtml(u) + '" alt="">' : '');
+  // Одоогийн зургийг (lazy линк байсан ч) харуулна — форм дээр «зураггүй» мэт харагдахгүй
+  const photoShowHtml = (u) => (String(u || '').trim() ? '<img src="' + escapeHtml(u) + '" alt="">' : '');
   function fullForm(p, m, withRel) {
     m = m || {};
     const sex = m.sex || '?';
@@ -2261,8 +2263,10 @@ function genitiveName(name) {
       '<button type="button" onclick="document.getElementById(\'' + p + '_file\').click()">📷 Зураг оруулах</button>' +
       '<input type="file" id="' + p + '_file" accept="image/*" style="display:none" onchange="window.__photoPick(\'' + p + '\')">' +
       '<label class="f">Эсвэл доорх талбарт линк бичнэ</label>' +
-      '<input type="text" id="' + p + '_photo" placeholder="/img/16 эсвэл https://..." value="' + escapeHtml(realPhoto(m.photo)) + '" oninput="window.__photoPrev(\'' + p + '\')">' +
-      '<div class="photo-prev" id="' + p + '_prev">' + photoPrevHtml(realPhoto(m.photo)) + '</div>' +
+      '<input type="text" id="' + p + '_photo" placeholder="/img/16 эсвэл https://..." value="' + escapeHtml(realPhoto(m.photo)) + '" data-orig="' + escapeHtml(realPhoto(m.photo)) + '" oninput="window.__photoPrev(\'' + p + '\')">' +
+      // Одоогийн зургийг (lazy линк ч) урьдчилан харуулна — хоосон мэт харагдахгүй
+      '<div class="photo-prev" id="' + p + '_prev">' + photoShowHtml(m.photo) + '</div>' +
+      (m.photo ? '<button type="button" class="ghost" style="margin-top:6px;font-size:12px" onclick="window.__photoDel(\'' + p + '\')">🗑 Зургийг устгах</button>' : '') +
       '<label class="f">Эмодзи-аватар (заавал биш)</label>' +
       '<div class="emo-chips" id="' + p + '_emo">' + EMOJIS.map(e =>
         '<span data-e="' + e + '"' + (m.emoji === e ? ' class="on"' : '') +
@@ -2311,6 +2315,13 @@ function genitiveName(name) {
     w.classList.toggle('hidden', !on);
     if (on) renderRelPick(p);
     else if (relSel.p === p) relSel = { p: null, id: 0 };
+  };
+  // «🗑 Зургийг устгах» — зургийг ЗОРИУД устгахыг илтгэнэ (data-orig-оос ялгаатай болгоно)
+  window.__photoDel = (p) => {
+    const el = $(p + '_photo'), pv = $(p + '_prev');
+    if (el) { el.value = ''; el.setAttribute('data-orig', '__remove__'); }
+    if (pv) pv.innerHTML = '';
+    toast('Зураг хадгалахад устана');
   };
   window.__photoPrev = (p) => {
     const el = $(p + '_prev'), inp = $(p + '_photo');
@@ -2448,7 +2459,15 @@ function genitiveName(name) {
       phone: ($(p + '_phone') || {}).value || '',
       honors: ($(p + '_honors') || {}).value || '',
       bio: ($(p + '_bio') || {}).value || '',
-      photo: ($(p + '_photo') || {}).value || '',
+      // ЗУРАГ: талбар хөндөгдөөгүй бол photo-г огт илгээхгүй. Эс бөгөөс
+      // state-ийн lazy линк '' болж, хадгалагдсан нүүр зураг устана.
+      ...(() => {
+        const el = $(p + '_photo');
+        if (!el) return {};
+        const cur = String(el.value || '').trim();
+        const orig = String(el.getAttribute('data-orig') || '');
+        return cur === orig ? {} : { photo: cur, photo_dirty: true };
+      })(),
       emoji: on ? on.dataset.e : '',
       alive: Number(($(p + '_alive') || {}).value || 1),
       rel_as: ($(p + '_rel') || {}).value || '',

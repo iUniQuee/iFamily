@@ -1493,7 +1493,10 @@ async function api(req, env, url, path) {
         // Засах форм нь state-ийн lazy линкийг буцааж илгээдэг — тэр үед хадгалагдсан
         // бодит зургийг хөндөхгүй.
         (() => {
-          const raw = b.photo !== undefined ? String(b.photo || '') : String(mem.photo || '');
+          if (b.photo === undefined) return normPhoto(mem.photo || '');
+          const raw = String(b.photo || '');
+          // Хоосон утга ирвэл зөвхөн «зургийг устгах» гэж ЗОРИУД илгээсэн үед л устгана
+          if (!raw && mem.photo && b.photo_dirty !== true) return normPhoto(mem.photo || '');
           return LAZY_PHOTO_RE.test(raw) ? normPhoto(mem.photo || '') : normPhoto(raw);
         })(),
         normDeath(b.death_date !== undefined ? b.death_date : mem.death_date || ''),
