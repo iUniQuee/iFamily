@@ -99,6 +99,11 @@ body { -webkit-text-size-adjust: 100%; }
   background: #F8FAFC;
 }
 #viewport.dragging { cursor: grabbing; }
+/* Профайл панель нээлттэй үед модны талбар баруун тийшээ нарийсч, панель
+   картуудыг далдлахгүй — мод, панель зэрэгцэнэ (side-by-side). */
+@media (min-width: 641px) {
+  body.panel-open #viewport { right: 331px; }
+}
 
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; backface-visibility: hidden; }
 #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
@@ -1218,7 +1223,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=449"></script>
+<script src="/tree_client.js?v=450"></script>
 </body>
 </html>`;
 }
