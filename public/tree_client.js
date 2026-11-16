@@ -2723,9 +2723,8 @@ function genitiveName(name) {
     document.body.appendChild(wrap);
     levelUpConfetti(wrap.querySelector('#lvup-cf'), fx.colors);
     const close = () => { const w = document.getElementById('lvup'); if (w) w.remove(); };
+    // Зөвхөн «Үргэлжлүүлэх» товчоор хаагдана — өөрөө алга болохгүй.
     wrap.querySelector('#lvup-ok').addEventListener('click', close);
-    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
-    setTimeout(close, 11000);
   }
 
   async function levelUpCheck() {
