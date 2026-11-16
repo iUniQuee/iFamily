@@ -96,16 +96,15 @@ body { -webkit-text-size-adjust: 100%; }
   /* ЗУМЫГ ЗӨВХӨН апп өөрөө зохицуулна — браузер хуудсыг томруулж, дээд
      мэнюг хөдөлгөх/алга болгохыг хориглоно. */
   touch-action: none; -webkit-user-select: none; user-select: none;
-  background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 52%, var(--bg3) 100%);
+  background: #F8FAFC;
 }
 #viewport.dragging { cursor: grabbing; }
 
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; backface-visibility: hidden; }
 #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
-.link-c { fill: none; stroke: var(--link1, #4a90d9); stroke-width: 2.5; }
-.link-s { fill: none; stroke: var(--link2, #e0a458); stroke-width: 2.5; }
-.link-plat { fill: rgba(224,164,88,.07); stroke: rgba(224,164,88,.45); stroke-width: 1.5; stroke-dasharray: 7 6; }
-.link-t { fill: none; stroke: var(--link3, #b48bd4); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.link-c, .link-s { fill: none; stroke: #CBD5E1; stroke-width: 2; stroke-linecap: round; }
+.link-plat { fill: none; stroke: none; }
+.link-t { fill: none; stroke: #CBD5E1; stroke-width: 1.5; }
 /* Нуугдсан хамаатаны бүлгийн тэмдэг (карт энгэр дээр) */
 .card .grp {
   position: absolute; left: -8px; top: -11px; z-index: 6;
@@ -312,96 +311,87 @@ button.btn-ok:hover { filter: brightness(.9); }
 .photo-prev img { max-height: 120px; border-radius: 8px; border: 1px solid var(--line); }
 /* хамаарлын ногоон нэрс + тодруулга */
 .rpill {
-  display: block; width: max-content; max-width: 100%; margin: 1px auto 0;
-  background: #2fae6a; color: #fff; font-size: 10.5px; font-weight: 700;
-  padding: 2px 9px; border-radius: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: block; width: max-content; max-width: 100%; margin: 3px auto 0;
+  background: #EFF6FF; color: #1D4ED8; font-size: 10.5px; font-weight: 700;
+  border: 1px solid #BFDBFE; padding: 2px 10px; border-radius: 999px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.card.f .rpill { background: #FDF2F8; color: #BE185D; border-color: #FBCFE8; }
+.card.q .rpill { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
 .card { transition: opacity .15s; }
-.card.kin .box { outline: 1px solid #2fae6a; outline-offset: -1px; }
-.link-s.link-hl, .link-c.link-hl { stroke: #2fae6a; stroke-width: 4; }
-/* Тодруулга: АЛТ = шууд дээшээ үе, ЦЭНХЭР = шууд доошоо үе (хажуугийнх ялгарахгүй) */
-.card.asc .box { outline: 1px solid #f5c542; outline-offset: -1px; }
-.card.desc .box { outline: 1px solid #2fae6a; outline-offset: -1px; }
-.link-s.link-up, .link-c.link-up { stroke: #FFD700; stroke-width: 4; }
-.link-s.link-down, .link-c.link-down { stroke: #2f80ed; stroke-width: 4; }
-/* Хамаарлын шугамын өнгө: хүүхэд — ногоон, ах/дүү — бүдэг цэнхэр,
-   эцгийн ах/дүү — бүдэг усан үзэм ягаан, эхийн ах/дүү — бор */
-.link-s.link-kid, .link-c.link-kid { stroke: #2fae6a; stroke-width: 4; }
-.link-s.link-sib, .link-c.link-sib { stroke: #9ec5f2; stroke-width: 4; }
-.link-s.link-pat, .link-c.link-pat { stroke: #d9a8c8; stroke-width: 4; }
-.link-s.link-mat, .link-c.link-mat { stroke: #8b5e3c; stroke-width: 4; }
+/* 4 өнгийн тодруулга (карт дарахад):
+   дээд үе — АЛТ, хүүхэд — НОГООН, ах/дүү — ЦЭНХЭР, хань/бэр-хүргэн — НИЛ ЯГААН */
+.card.asc .box { box-shadow: 0 0 0 1px rgba(245,158,11,.4), 0 6px 16px rgba(15,23,42,.14); }
+.card.desc .box, .card.kin .box { outline: none; }
+.link-s.link-up, .link-c.link-up { stroke: #F59E0B; stroke-width: 2.5; }
+.link-s.link-down, .link-c.link-down,
+.link-s.link-kid, .link-c.link-kid { stroke: #10B981; stroke-width: 2.5; }
+.link-s.link-sib, .link-c.link-sib { stroke: #0EA5E9; stroke-width: 2.5; }
+.link-s.link-sp, .link-c.link-sp,
+.link-s.link-pat, .link-c.link-pat,
+.link-s.link-mat, .link-c.link-mat { stroke: #8B5CF6; stroke-width: 2.5; }
+.link-s.link-hl, .link-c.link-hl { stroke: #10B981; stroke-width: 3; }
 
-/* ---------- ТУРШИЛТ: минималист харагдац ----------
-   Зөвхөн ургийн овог нь «Туршилт» гэсэн гишүүдийн карт/шугамд үйлчилнэ.
-   Байрлал, холбооны логик, товчнуудын үйлдэл хэвээр — зөвхөн өнгө, хэлбэр. */
-html[data-card] .card.trial .box, .card.trial .box {
-  background: #FFFFFF !important; border: 0 !important; border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.05) !important; outline: none !important;
-  padding: 9px 4px 5px !important;   /* зургийн дээр тайван зай */
+/* ---------- КАРТ: бүтэн зурагтай минималист хэв ---------- */
+html[data-card] .card .box, .card .box {
+  position: relative; display: block; width: 140px; height: 96px;
+  margin: 0 auto; padding: 0; gap: 0;
+  border-radius: 16px; overflow: hidden;
+  background: #E8EEF6; border: 2px solid #E2E8F0;
+  box-shadow: 0 4px 12px rgba(15,23,42,.10);
 }
-html[data-card] .card.trial.sel .box, html[data-card] .card.trial.focus .box,
-html[data-card] .card.trial.kin .box, html[data-card] .card.trial.asc .box,
-html[data-card] .card.trial.desc .box {
-  outline: none !important; box-shadow: 0 4px 12px rgba(0,0,0,.05) !important;
+html[data-card] .card.m .box, .card.m .box { border: 2px solid #93C5FD !important; }
+html[data-card] .card.f .box, .card.f .box { border: 2px solid #F9A8D4 !important; }
+html[data-card] .card.q .box, .card.q .box { border: 2px solid #E2E8F0 !important; }
+/* Дээд үеийн картын хүрээ — алтан 2.5px (хүйсийн хүрээнээс дээгүүр) */
+html[data-card] .card.asc .box, .card.asc .box { border: 2.5px solid #F59E0B !important; }
+/* Зургийн доод хагаст харанхуй градиент — нэр/он тод уншигдана */
+.card .box::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 55%, rgba(0,0,0,0) 100%);
 }
-/* Хүйсийн өнгийг зургийн эргэн тойрны 3px цагираг болгов */
-.card.trial .ava, .card.trial.f .ava, .card.trial.m .ava {
-  background: #EEF2F7; border: 0; box-shadow: 0 0 0 3px #93C5FD;
+html[data-card] .card .ava, .card .ava,
+.card.f .ava, .card.m .ava {
+  position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0;
+  border-radius: 0; border: 0; background: #B8C4D4; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 26px;
 }
-.card.trial.trial-f .ava, .card.trial.f .ava { box-shadow: 0 0 0 3px #F9A8D4; }
-.card.trial img.ava { background: #EEF2F7; }
-.card.trial .nm { font-weight: 700; color: #0F172A; }
-.card.trial .meta { color: #64748B; }
-/* Пастел шошго */
-.card.trial .rpill {
-  background: #EFF6FF; color: #1D4ED8; font-weight: 700;
-  border: 1px solid #BFDBFE; border-radius: 999px; padding: 2px 10px;
+.card img.ava { object-fit: cover; object-position: center 28%; display: block; background: #E8EEF6; }
+html[data-card] .card .nm, .card .nm {
+  position: absolute; left: 7px; right: 7px; bottom: 17px; z-index: 2;
+  width: auto; color: #FFFFFF; font-size: 13px; font-weight: 800; line-height: 1.12;
+  text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.45);
 }
-.card.trial.trial-f .rpill { background: #FDF2F8; color: #BE185D; border-color: #FBCFE8; }
-/* Хосын тасархай хүрээ хасагдана */
-.link-plat.trial-plat { display: none; }
-/* Нэгдсэн саарал холбоос: 2px, дугуй үзүүр */
-.link-s.trial-s, .link-c.trial-c, .link-s.trial-b {
-  stroke: #CBD5E1 !important; stroke-width: 2; stroke-linecap: round;
+html[data-card] .card .meta, .card .meta {
+  position: absolute; left: 7px; right: 7px; bottom: 5px; z-index: 2;
+  color: #E2E8F0; font-size: 10.5px; letter-spacing: .2px; line-height: 1;
+  text-align: center; margin: 0;
 }
-/* Хосын шугамын голд цагаан дугуй + саарал зүрх (SVG-д зурна) */
-.trial-heart text { font-family: inherit; line-height: 1; }
-/* Жижиг, төвийг сахисан үйлдлийн товчнууд */
-/* Үйлдлийн товчнууд — картын дээд ирмэг дээр хэвтээ pill бар */
-.card.trial .acts {
+.card.dead .box { opacity: .92; }
+.card .dead .ava { filter: grayscale(1) opacity(.7); }
+.card.sel .box, .card.focus .box,
+html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
+  outline: none; box-shadow: 0 6px 18px rgba(15,23,42,.22);
+}
+/* Үйлдлийн товчнууд — сонгосон картын дээд ирмэг дээрх нэг pill бар */
+.acts {
   position: absolute; left: 50%; transform: translateX(-50%);
   top: -30px; display: flex; align-items: center; gap: 2px;
   background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 999px;
-  padding: 3px 4px; box-shadow: 0 4px 12px rgba(0,0,0,.08); z-index: 6;
+  padding: 3px 4px; box-shadow: 0 4px 12px rgba(15,23,42,.12); z-index: 6;
   width: auto; height: auto;
 }
-.card.trial .acts button,
-.card.trial .acts .a-info,
-.card.trial .acts .a-edit,
-.card.trial .acts .a-add {
-  position: static !important; left: auto !important; right: auto !important;
-  top: auto !important; transform: none !important; margin: 0;
-  width: 24px !important; height: 24px !important; padding: 0;
+.acts button, .acts .a-info, .acts .a-edit, .acts .a-add {
+  position: static; left: auto; right: auto; top: auto; transform: none; margin: 0;
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: #334155; box-shadow: none;
   display: flex; align-items: center; justify-content: center;
-  background: transparent !important; border: 0 !important;
-  color: #334155 !important; box-shadow: none !important;
-  font-size: 13px !important; border-radius: 50%;
+  font-size: 13px; font-weight: 700;
 }
-.card.trial .acts button:hover { background: #F1F5F9 !important; }
-/* Нэгдсэн саарал холбоос — туршилтын харагдац идэвхтэй үед БҮХ шугам
-   (шар/цэнхэр/ногоон/ягаан) нэг өнгөтэй, 2px болно */
-body.has-trial .link-s, body.has-trial .link-c,
-body.has-trial .link-s.link-up, body.has-trial .link-c.link-up,
-body.has-trial .link-s.link-down, body.has-trial .link-c.link-down,
-body.has-trial .link-s.link-kid, body.has-trial .link-c.link-kid,
-body.has-trial .link-s.link-sib, body.has-trial .link-c.link-sib,
-body.has-trial .link-s.link-pat, body.has-trial .link-c.link-pat,
-body.has-trial .link-s.link-mat, body.has-trial .link-c.link-mat,
-body.has-trial .link-s.link-hl, body.has-trial .link-c.link-hl {
-  stroke: #CBD5E1 !important; stroke-width: 2 !important; stroke-linecap: round;
-}
-/* Дэвсгэр — зөвхөн туршилтын карт дэлгэцэнд байх үед */
-body.has-trial #viewport { background: #F8FAFC; }
+.acts .a-add { font-size: 16px; }
+.acts button:hover { background: #F1F5F9; color: #0F172A; border-color: transparent; }
+.sp-heart text { font-family: inherit; }
 
 /* ---------- Апп нээгдэх үеийн splash (PWA лого) ---------- */
 #splash {
@@ -840,7 +830,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=419"></script>
+<script src="/tree_client.js?v=423"></script>
 </body>
 </html>`;
 }
