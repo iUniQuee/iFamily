@@ -642,6 +642,57 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
   font-size: 12px; border-radius: 9px; padding: 2px 8px; flex: 0 0 auto;
 }
 .sc-rec small { color: var(--muted); font-size: 10.5px; flex: 0 0 auto; }
+/* Онооны самбар — өргөн дэлгэцэнд 2 багана, утсанд 2 таб */
+.modal.sc-modal { width: min(1000px, 96vw); }
+.sc-tabs { display: flex; gap: 4px; background: #F1F5F9; border-radius: 999px; padding: 3px; margin: 0 0 12px; }
+.sc-tabs .seg {
+  flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 7px 10px;
+  font-size: 13px; font-weight: 700; color: #64748B; box-shadow: none;
+}
+.sc-tabs .seg.on { background: #FFFFFF; color: #0F172A; box-shadow: 0 1px 3px rgba(15,23,42,.14); }
+.sc-cols { display: block; }
+.sc-col { min-width: 0; }
+.sc-col.sc-off { display: none; }
+/* 10 шат — нэг эгнээнд багтана, хэвтээ скроллгүй */
+.sc-track {
+  display: grid; grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px; overflow: visible; padding-bottom: 0;
+}
+.sc-node { width: auto; flex: none; }
+.sc-node::before { top: 13px; }
+.sc-node i { width: 28px; height: 28px; font-size: 12px; }
+.sc-node span {
+  font-size: 8.5px; line-height: 1.1; letter-spacing: -.01em;
+  overflow-wrap: break-word; overflow: hidden;
+}
+@media (max-width: 560px) {
+  .sc-node i { width: 25px; height: 25px; font-size: 11px; }
+  .sc-node::before { top: 12px; }
+  .sc-node span { font-size: 7.5px; }
+}
+/* Лидерүүдийн хүснэгт — түвшний нэр таслагдахгүй (2 мөр болж эвхэгдэнэ) */
+.sc-board .sc-row { grid-template-columns: 38px minmax(0, 1fr) minmax(62px, 92px) 56px; }
+.sc-lv { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; }
+/* Оноо хэрхэн тооцогддог вэ? — эвхдэг хэсэг */
+.sc-acc { margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sc-acc > summary {
+  list-style: none; cursor: pointer; padding: 9px 12px; font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; gap: 8px; user-select: none;
+}
+.sc-acc > summary::-webkit-details-marker { display: none; }
+.sc-acc > summary::after {
+  content: '▾'; margin-left: auto; color: var(--muted); font-size: 12px;
+  transition: transform .18s ease;
+}
+.sc-acc[open] > summary::after { transform: rotate(180deg); }
+.sc-acc-body { padding: 0 12px 6px; }
+.sc-acc-body .sc-rule:last-child { border-bottom: 0; }
+@media (min-width: 860px) {
+  .sc-tabs { display: none; }
+  .sc-cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; align-items: start; }
+  .sc-col, .sc-col.sc-off { display: block; }
+  .sc-sec-first { margin-top: 0; }
+}
 /* ── Зурхайн картууд (картын дэлгэрэнгүй) ── */
 .zcard { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:14px 16px; margin-top:10px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
 .zh { font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; margin-bottom:10px; }
@@ -941,7 +992,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=431"></script>
+<script src="/tree_client.js?v=434"></script>
 </body>
 </html>`;
 }

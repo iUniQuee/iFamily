@@ -3178,15 +3178,23 @@ function genitiveName(name) {
   window.__scores = async () => {
     try {
       const j = await getJson('/api/scores');
-      openModal('🏆 Онооны самбар', scoresHtml(j));
+      openModal('🏆 Онооны самбар', scoresHtml(j),
+        '<button onclick="window.__closeModal()">Хаах</button>', 'sc-modal');
     } catch (e) { toast(e.message); }
+  };
+  // Онооны самбар — дэлгэцэнд 2 багана, утсанд 2 таб
+  window.__scTab = (k) => {
+    document.querySelectorAll('.sc-tabs .seg').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    const a = document.getElementById('scColA'), b = document.getElementById('scColB');
+    if (a) a.classList.toggle('sc-off', k !== 'a');
+    if (b) b.classList.toggle('sc-off', k !== 'b');
   };
   function scoresHtml(j) {
     const me = j.me, lv = me.level, nx = me.next;
     const fmt = (n) => String(n == null ? 0 : n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    let h = '';
-    // ① түвшин header (круг progress)
-    h += '<div class="sc-head">' +
+    // ── ЗҮҮН БАГАНА: түвшин + 10 шат + лидерүүд ──
+    let left = '';
+    left += '<div class="sc-head">' +
       '<div class="sc-ring" style="--p:' + (me.pct || 0) + '"><span>' + lv.n + '</span></div>' +
       '<div class="sc-hinfo"><div class="sc-lvl">' + escapeHtml(lv.name) + '</div>' +
       '<div class="sc-pts">' + fmt(me.score) + ' оноо</div>' +
@@ -3194,21 +3202,21 @@ function genitiveName(name) {
       '<div class="sc-next">' + (nx
         ? 'Дараагийн түвшин «' + escapeHtml(nx.name) + '» (' + fmt(nx.at) + ' оноо) хүртэл <b>' + fmt(me.need) + ' оноо</b>'
         : 'Дээд түвшинд хүрсэн 🎉') + '</div></div></div>';
-    // ② 10 түвшний жагсаалт
-    h += '<div class="sc-track">' + j.levels.map((l) => {
+    // 10 шат — нэг эгнээнд багтана (хэвтээ скроллгүй)
+    left += '<div class="sc-track">' + j.levels.map((l) => {
       const cls = l.n === lv.n ? 'on' : (l.n < lv.n ? 'done' : '');
       return '<div class="sc-node ' + cls + '"><i>' + l.n + '</i><span>' + escapeHtml(l.name) + '</span></div>';
     }).join('') + '</div>';
-    // ③ Системийн лидерүүд
+    // 🏆 Системийн лидерүүд
     const dlt = me.delta > 0 ? '<span class="sc-up">▲ +' + me.delta + '</span>'
       : me.delta < 0 ? '<span class="sc-dn">▼ ' + Math.abs(me.delta) + '</span>' : '';
-    h += '<div class="sc-sec">🏆 Системийн лидерүүд</div>' +
+    left += '<div class="sc-sec">🏆 Системийн лидерүүд</div>' +
       '<div class="sc-note">Таны одоогийн байрлал: <b>#' + me.rank + '</b> · ' + fmt(me.score) + ' оноо · ' +
       me.users + ' хэрэглэгчээс ' + dlt + '</div>' +
       '<div class="sc-board"><div class="sc-row head"><span>БАЙР</span><span>НЭР</span><span>ТҮВШИН</span><span>ОНОО</span></div>';
     const medals = ['🥇', '🥈', '🥉'];
     const seenR = new Set();
-    h += j.board.map((b) => {
+    left += j.board.map((b) => {
       if (!b) return '<div class="sc-row"><span class="sc-rk">…</span><span class="sc-nm"></span><span class="sc-lv"></span><span class="sc-sc"></span></div>';
       let rk;
       if (b.rank <= 3 && !seenR.has(b.rank)) { seenR.add(b.rank); rk = medals[b.rank - 1]; }
@@ -3221,26 +3229,33 @@ function genitiveName(name) {
         '<span class="sc-sc">' + fmt(b.score) + '</span></div>';
     }).join('') + '</div>' +
       '<div class="sc-hint">Байрлал нь хэрэглэгч бүрийн өөрөө нэмсэн мэдээллээр бодогдсон оноогоор тодорхойлогдоно.</div>';
-    // ④ Оноо юунаас бүрдсэн
+    // ── БАРУУН БАГАНА: онооны задаргаа + дүрэм + бүртгэл ──
+    let right = '';
     const bd = [['Хүмүүсийн мэдээлэл', me.breakdown.info || 0],
       ['Зураг', me.breakdown.photo || 0], ['Огноотой үйл явдал', me.breakdown.event || 0]]
       .concat((me.breakdown.legacy || 0) ? [['Өмнөх бүртгэлээс шилжүүлсэн', me.breakdown.legacy]] : []);
     const maxBd = Math.max(1, bd[0][1], bd[1][1], bd[2][1]);
-    h += '<div class="sc-sec">Оноо юунаас бүрдсэн</div>' + bd.map((x) =>
+    right += '<div class="sc-sec sc-sec-first">Оноо юунаас бүрдсэн</div>' + bd.map((x) =>
       '<div class="sc-bd"><span>' + x[0] + '</span><span class="sc-bar"><i style="width:' +
       Math.round(x[1] / maxBd * 100) + '%"></i></span><b>' + fmt(x[1]) + '</b></div>').join('');
-    // ⑥ Оноо хэрхэн тооцогддог вэ?
-    h += '<div class="sc-sec">Оноо хэрхэн тооцогддог вэ?</div>' +
-      j.rules.map((r) => '<div class="sc-rule"><span>' + escapeHtml(r.label) + '</span><b class="' +
-        (r.cap ? 'sc-cap' : 'sc-plus') + '">' + (r.cap ? '' : '+') + fmt(r.points) + '</b></div>').join('');
-    // ⑦ Миний бүртгэл
+    // Оноо хэрхэн тооцогддог вэ? — эвхдэг (accordion)
+    right += '<details class="sc-acc"><summary>Оноо хэрхэн тооцогддог вэ?</summary>' +
+      '<div class="sc-acc-body">' + j.rules.map((r) => '<div class="sc-rule"><span>' + escapeHtml(r.label) + '</span><b class="' +
+        (r.cap ? 'sc-cap' : 'sc-plus') + '">' + (r.cap ? '' : '+') + fmt(r.points) + '</b></div>').join('') +
+      '</div></details>';
     if (j.records && j.records.length) {
-      h += '<div class="sc-sec">Миний бүртгэл</div>' +
+      right += '<div class="sc-sec">Миний бүртгэл</div>' +
         j.records.map((r) => '<div class="sc-rec"><span>' + escapeHtml(r.member) + ' — ' +
           escapeHtml(r.label) + '</span><b class="sc-plus">+' + fmt(r.points) + '</b><small>' +
           escapeHtml(r.at) + '</small></div>').join('');
     }
-    return h;
+    const tab = (k, label) => '<button class="seg' + (k === 'a' ? ' on' : '') + '" data-k="' + k +
+      '" onclick="window.__scTab(\'' + k + '\')">' + label + '</button>';
+    return '<div class="sc-tabs">' + tab('a', '🏆 Лидерүүд') + tab('b', '⭐ Миний оноо &amp; Дүрэм') + '</div>' +
+      '<div class="sc-cols">' +
+        '<div class="sc-col" id="scColA">' + left + '</div>' +
+        '<div class="sc-col sc-off" id="scColB">' + right + '</div>' +
+      '</div>';
   }
 
   // --- нэмэлт зураг / огноотой үйл явдал (оноотой) ---
