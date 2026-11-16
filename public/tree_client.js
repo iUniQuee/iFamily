@@ -1905,20 +1905,20 @@ function genitiveName(name) {
     const sec = (ico, title) => '<div class="rel-sec"><span class="rel-ico">' + ico + '</span>' + title + '</div>';
     let body = sec('🛠', 'УДИРДЛАГА');
     body += item('🎨', 'Дизайн', 'Өнгө, картын хэлбэр, нийтийн холбоос', '__design');
-    body += item('🖼', 'Анхдагч дүрс', 'Зураггүй хүмүүст харагдах 8 дүрс', '__avatarsPage');
     // Бүртгүүлсэн хүсэлт, карт холбох хүсэлтийг АДМИН ч хүлээж авна
     body += item('👥', 'Эрх ба хүсэлт', 'Бүртгэгдсэн хэрэглэгч, карт холбох хүсэлт', '__users');
+    body += item('📜', 'Аудит', 'Хийсэн үйлдлийн түүх', '__audit');
+    body += item('🔗', 'Холбоогүй / Давхар', 'Модтой холбогдоогүй гишүүд, давхар ба төстэй нэрс', '__orphans');
+    body += item('🔔', 'Мэдэгдэл', 'Шинэ бүртгэл, хүсэлтийг утсанд мэдэгдэх', '__pushPage');
     if (role === 'super') {
       body += sec('🔐', 'СУПЕР АДМИН');
+      body += item('🖼', 'Анхдагч дүрс', 'Зураггүй хүмүүст харагдах 8 дүрс', '__avatarsPage');
       // Backup файлууд (JSON / Excel / ZIP) — зөвхөн супер админд
       body += item('⬇', 'Backup', 'Бүх өгөгдлийг JSON файлаар татах', '__backup');
       body += item('📊', 'Excel', 'Бүх гишүүний мэдээллийг Excel-ээр татах', '__excel');
       body += item('🗜', 'Бүрэн ZIP', 'Дата + Excel + CSV + D1 схем + тайлбар — нэг файл', '__fullzip');
       body += item('📋', 'Импорт', 'Excel / JSON-оос гишүүд оруулах', '__import');
-      body += item('📜', 'Аудит', 'Хийсэн үйлдлийн түүх', '__audit');
     }
-    body += item('🔗', 'Холбоогүй / Давхар', 'Модтой холбогдоогүй гишүүд, давхар ба төстэй нэрс', '__orphans');
-    body += item('🔔', 'Мэдэгдэл', 'Шинэ бүртгэл, хүсэлтийг утсанд мэдэгдэх', '__pushPage');
     openModal('⚙️ Админ', body, '<button onclick="window.__closeModal()">Хаах</button>');
   };
   // ---------- 🔗 Модтой холбоогүй гишүүд ----------
@@ -2099,7 +2099,7 @@ function genitiveName(name) {
     if (typeof fn === 'function') setTimeout(fn, 60);
   };
 
-  // ---------- 🖼 Анхдагч дүрс (зөвхөн админ) ----------
+  // ---------- 🖼 Анхдагч дүрс (зөвхөн супер админ) ----------
   const AV_META = [
     ['m_child', 'Эрэгтэй хүүхэд', '0–12'],
     ['f_child', 'Эмэгтэй хүүхэд', '0–12'],
@@ -2112,7 +2112,7 @@ function genitiveName(name) {
   ];
   window.__avatarsPage = () => {
     const role = S.viewer && S.viewer.role;
-    if (role !== 'admin' && role !== 'super') return;
+    if (role !== 'super') return; // зөвхөн супер админ солино
     const cell = (slot, title, ages) => {
       const url = AVATARS[slot];
       const initial = title.charAt(0);

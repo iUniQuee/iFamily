@@ -1704,7 +1704,7 @@ async function api(req, env, url, path) {
         'x-content-type-options': 'nosniff'
       } });
     }
-    needAdmin();
+    needSuper(); // анхдагч дүрс — зөвхөн супер админ солино
     if (method === 'POST') {
       const b = await readBody(req);
       const url = normPhoto(b.url);
