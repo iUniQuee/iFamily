@@ -213,7 +213,7 @@
     return out;
   }
   // (debug/шалгалт) тухайн гишүүнд харуулах хамаатны шошго
-  window.__rel = (id) => (vRel && vRel.get(Number(id))) || null;
+  window.__rel = (id, center) => { const m = labelsFrom(center); return m ? (m.get(Number(id)) || null) : null; };
   function kinOf(id) {
     if (id == null || !byId.has(id)) return null;
     const out = new Set([id]);
@@ -245,13 +245,16 @@
   // Суурь 4 холбоос: F=Аав, M=Ээж, S=Хань, C=Хүүхэд.
   // Нэвтэрсэн хэрэглэгчийн member_id-аас эхлэн BFS замаар рекурсив хайж,
   // Монгол ураг төрлийн дүрмийн жагсаалтаар түр label буцаана (DB-д хатуу бичдэггүй).
-  function viewerLabels() {
-    const vid = S.viewer && S.viewer.member_id;
+  // Төв хүнээс (сүүлийн байдлаар нэвтэрсэн хэрэглэгч) хамаатан бүрийн нэрийг тооцно.
+  // centerId өгвөл тэр хүнээс эхлэн тооцно — мод дээр аль ч хүн дээр дарахад ашиглагдана.
+  function labelsFrom(centerId, depth) {
+    const vid = centerId != null ? Number(centerId) : (S.viewer && S.viewer.member_id);
     if (!vid || !byId.has(vid)) return null;
     const me = byId.get(vid);
     const yrOf = m => { const s = yearOf(m); return /^\d{4}$/.test(s) ? Number(s) : 0; };
     const myYear = yrOf(me);
-    const out = new Map([[vid, 'Би']]);
+    const isViewer = !!(S.viewer && S.viewer.member_id === vid);
+    const out = new Map([[vid, isViewer ? 'Би' : 'Энэ хүн']]);
     const roleOf = (cid, pid) => {
       const mm = parRole.get(cid);
       const r = mm && mm.get(pid);
@@ -270,7 +273,6 @@
         if (myYear && ty && ty !== myYear) return ty > myYear ? (isF ? 'Дүү охин' : 'Дүү') : (isF ? 'Эгч' : 'Ах');
         return isF ? 'Эгч/Дүү' : 'Ах/Дүү';
       };
-      const asc3 = () => (path[0] === 'F' ? 'Аавын ' : 'Ээжийн ') + (path[n - 1] === 'F' ? 'өвөө' : 'эмээ');
       // Авга/нагац, өвөө/эмээгийн ах дүүг «дүү/охин» гэж ялгахгүй:
       // насны ангилалаар эрэгтэй нь «ах», эмэгтэй нь «эгч» гэнэ.
       // Жишээ: авга ах, авга эгч, нагац ах, нагац эгч, өвөөгийн ах/эгч.
@@ -300,8 +302,11 @@
         if (p === 'S,F,M' || p === 'S,M,M') return 'Хадам эмээ';
         if (p === 'S,F,S') return 'Хадам ээж'; // хадам аавын шинэ хань
         if (p === 'S,M,S') return 'Хадам аав'; // хадам ээжийн шинэ хань
-        if (p === 'F,F,C' || p === 'F,M,C') return parSib('Авга', isF);
-        if (p === 'M,F,C' || p === 'M,M,C') return parSib('Нагац', isF);
+        // Авга/нагац ах, эгч, ДҮҮ — эцэг/эхтэйгээ нас харьцуулж ялгана
+        if (p === 'F,F,C' || p === 'F,M,C' || p === 'M,F,C' || p === 'M,M,C') {
+          const base = p[0] === 'F' ? 'Авга' : 'Нагац';
+          return base + ' ' + sibWord(yrOf(byId.get(ids[1]) || {}), yrOf(tgt), isF);
+        }
         if (p === 'F,C,S' || p === 'M,C,S') {
           // ах/дүүгийн хань — төрсөн онгоор АХ эсвэл ДҮҮГ ялгана
           // (жишээ: Мягмардорж-ийн эхнэр → «Ахын эхнэр»)
@@ -312,70 +317,99 @@
           return 'Ах/дүүгийн хань';
         }
         if (p === 'C,C,C') return mid.sex === 'm' ? 'Ачийн хүүхэд' : mid.sex === 'f' ? 'Зээгийн хүүхэд' : 'Ач/Зээгийн хүүхэд';
-        if (/^[FM],[FM],[FM]$/.test(p)) return asc3(); // Аавын өвөө, Ээжийн эмээ ...
-      } else if (n === 4) {
-        // Нагац/авга ах, эгчийн ХАНЬ — «Ээжийн тал» гэсэн ерөнхий шошго
-        // гарахгүйн тулд тусад нь: нагац эгчийн нөхөр, авга ахын эхнэр ...
-        if (/^[FM],[FM],C,S$/.test(p)) {
-          // Нагац эгчийн нөхөр / нагац ахын эхнэр (хүйсээр нь зөв хэлбэр)
-          const base = path[0] === 'M' ? 'Нагац' : 'Авга';
-          const g = mid.sex === 'f' ? ' эгчийн ' : ' ахын ';
-          return base + g + (isF ? 'эхнэр' : 'нөхөр');
+        // Дээд үе: элэнц өвөө/эмээ (эхийн тал бол «Нагац элэнц …»)
+        if (/^[FM],[FM],[FM]$/.test(p)) {
+          return cap1((path[0] === 'M' ? 'Нагац ' : '') + (path[2] === 'F' ? 'элэнц өвөө' : 'элэнц эмээ'));
         }
-        if (/^[FM],[FM],C,C$/.test(p)) {
-          // Нагац тал — БӨЛ, авга тал — ҮЕЭЛ. Монголд үеэл/бөлөө
-          // насаар нь «ах/эгч/дүү» гэж дууддаг тул төрсөн он байвал
-          // түүгээр, байхгүй бол хүйсээр нь тодотгоно.
-          const base = path[0] === 'M' ? 'Бөл' : 'Үеэл';
-          const ty = yrOf(tgt);
-          if (myYear && ty && ty !== myYear) return ty > myYear ? base + ' дүү' : base + (isF ? ' эгч' : ' ах');
-          if (tgt.sex === 'f') return base + ' охин';
-          if (tgt.sex === 'm') return base + ' хүү';
-          return base;
-        }
-        // Өвөө/эмээгийн ах дүү: ids[2] нь тухайн өвөө/эмээ.
-        // Төрсөн оноор нь: ахмад — ах/эгч, бага — дүү.
-        if (/^[FM],[FM],[FM],C$/.test(p)) {
-          const gp = byId.get(ids[2]) || {};
-          const gy = yrOf(gp), ty = yrOf(tgt);
-          const base = (gp.sex === 'f' ? 'Эмээ' : 'Өвөө') + 'гийн';
-          if (gy && ty && ty !== gy) {
-            return base + (ty < gy ? (isF ? ' эгч' : ' ах') : ' дүү');
-          }
-          return parSib(base, isF);
-        }
-        if (/^[FM],[FM],[FM],[FM]$/.test(p)) return 'Дээд үе';
-        if (p === 'C,C,C,C') return 'Доод үе';
-        if (p === 'S,F,C,C' || p === 'S,M,C,C') return mid.sex === 'm' ? 'Хадам ач' : mid.sex === 'f' ? 'Хадам зээ' : 'Хадам ач/Зээ'; // хадамын ах/дүүгийн хүүхэд
-        if (/^S,[FM],[FM],C$/.test(p)) return isF ? 'Хадам эгч' : 'Хадам ах'; // хадам аавын ах/дүү (худ ах)
-        if (/^S,[FM],[FM],[FM]$/.test(p)) return 'Хадам элэнц'; // хадамын дээд үе
-        if (p === 'F,F,C,S' || p === 'F,M,C,S') return mid.sex === 'f' ? 'Авга хүргэн' : 'Авга бэр'; // авгa ахын эхнэр / авгa эгчийн нөхөр
-        if (p === 'M,F,C,S' || p === 'M,M,C,S') return mid.sex === 'f' ? 'Нагац хүргэн' : 'Нагац бэр'; // нагац ахын эхнэр / нагац эгчийн нөхөр
-      } else if (n === 5) {
-        // Бөл/үеэлийн ХАНЬ: бөл эгчийн нөхөр, үеэл ахын эхнэр ...
-        if (/^[FM],[FM],C,C,S$/.test(p)) {
-          const base = path[0] === 'M' ? 'Бөл' : 'Үеэл';
-          const cy = yrOf(mid);
-          const isCF = mid.sex === 'f';
-          let cl;
-          if (myYear && cy && cy !== myYear) cl = base + (cy > myYear ? ' дүү' : (isCF ? ' эгч' : ' ах'));
-          else cl = base + (isCF ? ' охин' : ' хүү');
-          // «эгч» → эгчийн, «ах» → ахын, «дүү» → дүүгийн, «охин» → охины
-          const g = /эгч$/.test(cl) ? cl + 'ийн' : /ах$/.test(cl) ? cl + 'ын'
-            : /дүү$/.test(cl) ? cl + 'гийн' : /охин$/.test(cl) ? cl + 'ы'
-            : /хүү$/.test(cl) ? cl + 'гийн' : cl + 'ийн';
-          return g + (isF ? ' эхнэр' : ' нөхөр');
-        }
-        if (/^[FM],[FM],C,C,C$/.test(p)) return (path[0] === 'M' ? 'Бөлийн' : 'Үеэлийн') + (isF ? ' охин' : ' хүү');
-        if (/^S,[FM],[FM],C,C$/.test(p)) return 'Хадам үеэл'; // хадамын ах/дүүгийн хүүхэд = хамтрагчийн үзээл
       }
-      // Дүрмээс гадна зам — талыг нь товчоор (шошгонд тайрагдахгүй).
-      // Ханийн шугамаар орсон бол «Аавын/Ээжийн тал» биш, «Хадам тал» гэнэ.
-      if (path.indexOf('S') >= 0) return 'Хадам тал';
-      if (path[0] === 'F') return 'Аавын тал';
-      if (path[0] === 'M') return 'Ээжийн тал';
-      return 'Хамаатан'; // дүрмийн жагсаалтаас гадна зам
+      // 4+ шатлалтай зам (жишээ: ээж → эмээ → нагац → үеэл → хань) —
+      // бүтцээр (үеийн тоо, хүйс, төрсөн он) нэрлэнэ.
+      return longName(ids, path);
     };
+    // «эгч» → эгчийн, «ах» → ахын, «дүү» → дүүгийн, «охин» → охины ...
+    const genitiveOf = (w) => {
+      // «i» чухал: «Эмээ», «Ах», «Дүү» гэх мэт том үсгээр эхэлсэн үг ч таарна
+      if (/(өвөө|эмээ)$/i.test(w)) return w + 'гийн';
+      if (/эгч$/i.test(w)) return w + 'ийн';
+      if (/ах$/i.test(w)) return w + 'ын';
+      if (/дүү$/i.test(w)) return w + 'гийн';
+      if (/охин$/i.test(w)) return w + 'ы';
+      if (/хүү$/i.test(w)) return w + 'гийн';
+      return w + 'ийн';
+    };
+    // Төрсөн оноор: ахмад нь ах/эгч, бага нь дүү
+    const sibWord = (cy, ty, female) => {
+      if (cy && ty && ty !== cy) return ty > cy ? 'дүү' : (female ? 'эгч' : 'ах');
+      return female ? 'эгч/дүү' : 'ах/дүү';
+    };
+    function nameOf(ids, path) {
+      return path.length >= 4 ? longName(ids, path) : term(ids, path);
+    }
+    function longName(ids, path) {
+      const n = path.length;
+      const tgt = byId.get(ids[n]) || {};
+      const isF = tgt.sex === 'f';
+      // ① Ханийн тал (хадам) — зам «S»-ээр эхэлсэн
+      if (path[0] === 'S') return 'Хадам тал';
+      // ② Сүүлчийн алхам нь хань — гэрлэлтээр орж ирсэн хүн
+      if (path[n - 1] === 'S') {
+        const base = nameOf(ids.slice(0, n), path.slice(0, n - 1));
+        const bm = byId.get(ids[n - 1]) || {};
+        if (/Үеэл/.test(base)) return 'Үеэл ' + (bm.sex === 'f' ? 'хүргэн' : 'бэр');
+        return genitiveOf(base) + (bm.sex === 'f' ? ' нөхөр' : ' эхнэр');
+      }
+      const up = path.filter(x => x === 'F' || x === 'M').length;
+      const down = n - up;
+      const g = up - down;                    // + дээд үе, − доод үе
+      // ③ Шууд дээшээ үе: аав → өвөө → элэнц → хуланц
+      if (down === 0) {
+        const mat = path[0] === 'M';
+        const lastF = path[n - 1] === 'F';
+        if (n === 1) return lastF ? 'Аав' : 'Ээж';
+        if (n === 2) return mat ? (lastF ? 'Нагац өвөө' : 'Нагац эмээ') : (lastF ? 'Өвөө' : 'Эмээ');
+        if (n === 3) return cap1((mat ? 'Нагац ' : '') + (lastF ? 'элэнц өвөө' : 'элэнц эмээ'));
+        if (n === 4) return cap1((mat ? 'Нагац ' : '') + (lastF ? 'хуланц өвөө' : 'хуланц эмээ'));
+        return 'Дээд үе';
+      }
+      // ④ Дээд үеийн хажуугийн хамаатан (авга/нагац ба тэдний үеийнхэн)
+      if (g > 0) {
+        if (g === 1) {
+          const side = path[0] === 'F' ? 'Авга' : 'Нагац';
+          return side + ' ' + sibWord(yrOf(byId.get(ids[1]) || {}), yrOf(tgt), isF);
+        }
+        if (g === 2) {
+          const gp = byId.get(ids[2]) || {};
+          return (gp.sex === 'f' ? 'Эмээгийн' : 'Өвөөгийн') + ' ' + sibWord(yrOf(gp), yrOf(tgt), isF);
+        }
+        const anc = g <= 3 ? 'Элэнц өвөөгийн' : 'Хуланц өвөөгийн';
+        return anc + ' ' + (isF ? 'эгч/дүү' : 'ах/дүү');
+      }
+      // ⑤ Нэг үеийнхэн — үеэл (авга, нагац хоёр тал)
+      if (g === 0) {
+        const w = sibWord(myYear, yrOf(tgt), isF);
+        return (up === 2 ? 'Үеэл ' : 'Холын үеэл ') + w;
+      }
+      // ⑥ Доод үе
+      if (g === -1) {
+        if (up === 0) return isF ? 'Охин' : 'Хүү';
+        if (up === 1) {
+          // ids[n-1] — ах/эгч өөрөө: ахын хүүхэд «ач», эгчийн хүүхэд «зээ»
+          const sib = byId.get(ids[n - 1]) || {};
+          return (sib.sex === 'm' ? 'Ач ' : 'Зээ ') + (isF ? 'охин' : 'хүү');
+        }
+        return 'Үеэлийн ' + (isF ? 'охин' : 'хүү');
+      }
+      if (g === -2) {
+        if (up === 0) return isF ? 'Ачийн охин' : 'Ачийн хүү';
+        return 'Үеэлийн ач';
+      }
+      // ⑦ Гурав ба түүнээс доош үе
+      if (up === 0) {
+        if (g === -3) return isF ? 'Гуч охин' : 'Гуч хүү';
+        return isF ? 'Шүү охин' : 'Шүү хүү';
+      }
+      return 'Үеэлийн ач';
+    }
     const q = [{ ids: [vid], path: [] }];
     while (q.length) {
       const { ids, path } = q.shift();
@@ -391,8 +425,29 @@
       for (const cid of kidsOf.get(id) || []) push(cid, 'C');            // ② доод үе
       for (const sid of spOf.get(id) || []) push(sid, 'S');              // ③ хань (хамгийн сүүлд)
     }
+    // Ханийн тал: «Хадам тал» гэсэн ерөнхий шошгыг хань руугаа төвлөрүүлж
+    // «Эхнэрийн нагац ах», «Нөхрийн үеэл эгч» гэх мэтээр тодотгоно.
+    if (!depth) {
+      const hadam = [...out.keys()].filter(k => out.get(k) === 'Хадам тал');
+      for (const sid of (spOf.get(vid) || [])) {
+        const sp = byId.get(sid) || {};
+        const pre = sp.sex === 'f' ? 'Эхнэрийн ' : 'Нөхрийн ';
+        const inner = labelsFrom(sid, 1);
+        if (!inner) continue;
+        for (const [id2, lb] of inner) {
+          if (id2 === vid) continue;
+          if (out.has(id2) && out.get(id2) !== 'Хадам тал') continue;
+          if (!lb || lb === 'Энэ хүн' || lb === 'Би') continue;
+          // Том үсгийг жижиг болгож, хэллэг дунд зөв бичинэ: «Эхнэрийн нагац дүү»
+          const low = lb.charAt(0).toLowerCase() + lb.slice(1);
+          out.set(id2, lb === 'Хадам тал' ? 'Хадам тал' : pre + low);
+        }
+      }
+      for (const k of hadam) if (!out.has(k)) out.set(k, 'Хадам тал');
+    }
     return out;
   }
+  function viewerLabels() { return labelsFrom(S.viewer && S.viewer.member_id); }
   // Шууд дээшээ үе (рекурсив): аав, ээж, өвөө, эмээ, ... — хажуугийнхийг оруулахгүй
   function ascOf(id) {
     const out = new Set();
@@ -648,7 +703,11 @@
     curRel = (selected != null && byId.has(selected)) ? relLabels(selected) : null;
     curAsc = (selected != null && byId.has(selected)) ? ascOf(selected) : null;
     curDesc = (selected != null && byId.has(selected)) ? descOf(selected) : null;
-    vRel = viewerLabels(); // нэвтрэлттэй хэрэглэгч төвтэй динамик нэршил
+    // Сонгосон (тодорсон) хүн байвал ТЭР хүнээс эхлэн хамаатны нэрийг тооцно,
+    // эс бөгөөс нэвтэрсэн хэрэглэгч төвтэй хэвээр.
+    const centerId = (selected != null && byId.has(selected))
+      ? selected : (S.viewer && S.viewer.member_id);
+    vRel = labelsFrom(centerId);
     curBlood = (focus != null) ? bloodNear(focus) : null;
     // Хамаарлын өнгө — сонгосон хүн (эсвэл нэвтэрсэн хэрэглэгч) төвтэй:
     //   дээшээ үе — АЛТ #FFD700, хүүхэд/ач — НОГООН #2fae6a,
@@ -1383,16 +1442,20 @@ function genitiveName(name) {
     try { d = await getJson('/api/members/' + id); } catch (e) { toast(e.message); return; }
     const m = d.member;
     const rel = d.relations;
-    if (!vRel) vRel = viewerLabels(); // нэвтэрсэн хэрэглэгч төвтэй динамик нэршил
-    const selfRel = vRel ? vRel.get(id) : null;
+    // «Таны харилцаа» — нэвтэрсэн хэрэглэгчтэй харьцуулсан нэр;
+    // харин доорх Эцэг/Эх, Ах/Дүү, Хань, Хүүхэд гэсэн жагсаалт нь
+    // ТУХАЙН ХҮНЭЭС эхлэн тооцсон хамаатны нэрээр бичигдэнэ.
+    const myRel = viewerLabels();
+    const selfRel = myRel ? myRel.get(id) : null;
+    const kinRel = labelsFrom(id) || vRel;
     const pat = patronymicOf(id);
     // Устгах үйлдэл зөвхөн админ/супер админд (буруу дараад бүгдийг устгахаас сэргийлнэ)
     const isBoss = !!(S.viewer && (S.viewer.role === 'admin' || S.viewer.role === 'super'));
     // kind (parent/spouse/child) өгвөл буруу холбоосыг устгах «✕» товч гарна
     const relList = (arr, kind) => arr.length
       ? arr.map(x => '<span onclick="window.__goto(' + x.id + ')">' + escapeHtml(x.name) +
-        (vRel && vRel.get(x.id) && vRel.get(x.id) !== 'Хамаатан'
-          ? ' <b style="color:#2fae6a">(' + escapeHtml(vRel.get(x.id)) + ')</b>' : '') +
+        (kinRel && kinRel.get(x.id) && kinRel.get(x.id) !== 'Хамаатан' && kinRel.get(x.id) !== 'Энэ хүн'
+          ? ' <b style="color:#2fae6a">(' + escapeHtml(kinRel.get(x.id)) + ')</b>' : '') +
         ' <i style="opacity:.6">' + escapeHtml(String(x.birth_date ? x.birth_date.slice(0, 4) : (x.birth_year || ''))) + '</i></span>' +
         ((kind && isBoss)
           ? '<button class="ghost" title="Буруу холбоосыг устгах" style="padding:0 4px;margin:0 0 0 2px;font-size:11px" ' +
