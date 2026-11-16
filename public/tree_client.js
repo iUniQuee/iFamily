@@ -1136,10 +1136,22 @@
   const ELEMS10 = ['Мод', 'Мод', 'Гал', 'Гал', 'Шороо', 'Шороо', 'Төмөр', 'Төмөр', 'Ус', 'Ус'];
   const ELEM_COLOR = { 'Мод': 'ногоон', 'Гал': 'улаан', 'Шороо': 'шар', 'Төмөр': 'цагаан', 'Ус': 'хар' };
   // Суудал — найман суудал эргэлдэнэ
-  const SEATS = ['Мод', 'Гал', 'Шороо', 'Ус', 'Төмөр', 'Хий', 'Уул', 'Огторгуй'];
   // Суудлын хүрд (дээд талаас нар зөв): Гал → Шороо → Төмөр → Огторгуй → Ус → Уул → Мод → Хий
   const ZUR_WHEEL = ['Гал', 'Шороо', 'Төмөр', 'Огторгуй', 'Ус', 'Уул', 'Мод', 'Хий'];
-  const COLOR_ADJ = { 'ногоон': 'ногоогчин', 'улаан': 'улаагчин', 'шар': 'шарагчин', 'цагаан': 'цагаагчин', 'хар': 'харлаг' };
+  // Өнгөний тэмдэглэл: ЭР жилийн амьтан дээр «Хөх, Улаан, Шар, Цагаан, Хар»,
+  // ЭМ жилийн амьтан дээр «Хөхөгчин, Улаагчин, Шарагчин, Цагаагчин, Харагчин»
+  const COLOR_ADJ = {
+    'ногоон': ['хөх', 'хөхөгчин'],
+    'улаан': ['улаан', 'улаагчин'],
+    'шар': ['шар', 'шарагчин'],
+    'цагаан': ['цагаан', 'цагаагчин'],
+    'хар': ['хар', 'харагчин']
+  };
+  // 9 мэнгэний албан ёсны нэршил (өөр хослол гаргахгүй)
+  const MENGGE9 = [null, 'цагаан', 'хар', 'хөх', 'ногоон', 'шар', 'цагаан', 'улаан', 'цагаан', 'улаан'];
+  // 8 хөлөл (суудал): эрэгтэй 1 настайдаа Гал, эмэгтэй 1 настайдаа Ус —
+  // цааш нар зөв/нар буруу гэсэн энэ дарааллаар эргэлдэнэ.
+  const ZUR_WHEEL_START = { m: 0, f: 4 };
   // Цагаан сарын өдөр — жил бүрийн шинийн нэгэн (сар.өдөр)
   const TSAGAAN = { 2020: '02.24', 2021: '02.12', 2022: '02.02', 2023: '02.21', 2024: '02.10',
     2025: '03.01', 2026: '02.17', 2027: '02.07', 2028: '01.26', 2029: '02.13', 2030: '02.03',
@@ -1168,27 +1180,47 @@
     const before = !!mo && (mo < 2 || (mo === 2 && (!d || d < 5)));
     return before ? y - 1 : y;
   }
+  // Өнгөний тэмдэглэл: амьтны хүйсээр (0,2,4… = эр жил; 1,3,5… = эм жил)
+  function colorAdjOf(elem, animalIdx) {
+    const pair = COLOR_ADJ[ELEM_COLOR[elem]] || ['хар', 'харагчин'];
+    return animalIdx % 2 === 0 ? pair[0] : pair[1];
+  }
+  // 8 хөлөл: эрэгтэй Галаас, эмэгтэй Уснаас эхэлж, 1 нас тутам нэг суудлаар
+  function seatOf(sex, age) {
+    const start = sex === 'f' ? ZUR_WHEEL_START.f : ZUR_WHEEL_START.m;
+    return ZUR_WHEEL[mod(start + age - 1, 8)];
+  }
   function zurkhaiOf(m) {
     const ly = lunarYearOf(m);
     if (!ly) return null;
-    const an = ANIMALS[mod(ly - 4, 12)];
+    const aIdx = mod(ly - 4, 12);
+    const an = ANIMALS[aIdx];
     const el = ELEMS10[mod(ly - 4, 10)];
     const nowY = new Date().getFullYear();
-    const now = ANIMALS[mod(nowY - 4, 12)];
+    const nIdx = mod(nowY - 4, 12);
+    const now = ANIMALS[nIdx];
     const nowEl = ELEMS10[mod(nowY - 4, 10)];
+    const lunarAge = nowY - ly + 1;
+    // Мэнгэ: (2 − билгийн жил) mod 9, 0 гарвал 9
+    const mengge = mod(2 - ly, 9) || 9;
+    const pIdx = mod(ly - 5, 12);
     return {
       ly,
       animal: an[0], animalAdj: an[1],
       elem: el, color: ELEM_COLOR[el],
-      mengge: mod(ly - 4, 9) || 9,
-      menggeColor: (m.sex === 'f' ? 'хар' : 'цагаан'),
-      seat: SEATS[mod(ly - 4, 8)],
+      colorAdj: colorAdjOf(el, aIdx),
+      mengge,
+      menggeName: MENGGE9[mengge],
+      seat: seatOf(m.sex, lunarAge),
+      seatStartWord: m.sex === 'f' ? 'Уснаас' : 'Галаас',
+      seatDirWord: m.sex === 'f' ? 'нар буруу' : 'нар зөв',
       nowY, nowAnimal: now[0], nowAnimalAdj: now[1], nowColor: ELEM_COLOR[nowEl],
-      lunarAge: nowY - ly + 1,
+      nowColorAdj: colorAdjOf(nowEl, nIdx),
+      lunarAge,
       icon: JIL_ZURAG[an[0]] || an[2] || '🐾',
-      prevColorAdj: COLOR_ADJ[ELEM_COLOR[ELEMS10[mod(ly - 5, 10)]]] || 'өмнөх оны',
-      prevAnimalAdj: ANIMALS[mod(ly - 5, 12)][1],
-      nextSeat: ZUR_WHEEL[(ZUR_WHEEL.indexOf(SEATS[mod(ly - 4, 8)]) + 1) % 8],
+      prevColorAdj: colorAdjOf(ELEMS10[mod(ly - 5, 10)], pIdx),
+      prevAnimalAdj: ANIMALS[pIdx][1],
+      nextSeat: seatOf(m.sex, lunarAge + 1),
       nextTsagaan: TSAGAAN[nowY + 1] || '02.07'
     };
   }
@@ -1254,23 +1286,22 @@ function genitiveName(name) {
         '<div class="zrow">' +
           '<div class="zring"><span>' + z.icon + '</span></div>' +
           '<div class="zbody">' +
-            '<h3>' + escapeHtml(cap1(z.color) + ' ' + z.animalAdj + ' жил') + '</h3>' +
+            '<h3>' + escapeHtml(cap1(z.colorAdj) + ' ' + z.animalAdj + ' жил') + '</h3>' +
             '<p class="zmuted">Цагаан сараас өмнө төрсөн бол ' + escapeHtml(z.prevColorAdj + ' ' + z.prevAnimalAdj + ' жил') + '</p>' +
             '<p class="zline">' + z.ly + ' оны билгийн жил · билгийн нас ' + z.lunarAge + '</p>' +
-            '<p class="zline"><b>Мэнгэ: ' + escapeHtml(z.mengge + ' ' + z.menggeColor) + '</b></p>' +
+            '<p class="zline"><b>Мэнгэ: ' + escapeHtml(z.mengge + ' ' + z.menggeName) + '</b></p>' +
           '</div>' +
         '</div>' +
-        '<div class="zfoot">Одоогийн билгийн жил: ' + escapeHtml(z.nowColor + ' ' + z.nowAnimalAdj + ' жил') + ' (' + z.nowY + ')</div>' +
+        '<div class="zfoot">Одоогийн билгийн жил: ' + escapeHtml(z.nowColorAdj + ' ' + z.nowAnimalAdj + ' жил') + ' (' + z.nowY + ')</div>' +
       '</div>';
       // ── Суудал
       const sexWord = m.sex === 'f' ? 'эмэгтэй' : 'эрэгтэй';
-      const dir = m.sex === 'f' ? 'нар буруу' : 'нар зөв';
       h += '<div class="zcard">' +
         '<div class="zh">Суудал</div>' +
         '<div class="zrow zrow-seat">' + seatWheelHtml(z) +
           '<div class="zbody">' +
             '<h3>' + escapeHtml(z.seat) + '</h3>' +
-            '<p class="zsmall">' + z.nowY + ' оны билгийн жилд ' + z.lunarAge + ' настай — ' + sexWord + ' хүн Галаас эхлэн ' + dir + ' тоолно.</p>' +
+            '<p class="zsmall">' + z.nowY + ' оны билгийн жилд ' + z.lunarAge + ' настай — ' + sexWord + ' хүн 1 настайдаа ' + z.seatStartWord + ' эхлэн ' + z.seatDirWord + ' тоолно.</p>' +
             '<p class="zsmall">Төрсөн өдөр Цагаан сартай давхцвал <span class="zstrong">' + escapeHtml(z.nextSeat) + '</span> суудалд тооцогдоно.</p>' +
             '<p class="zsmall znext">Ирэх Цагаан сар (' + (z.nowY + 1) + '.' + z.nextTsagaan + ')-аас хойш: <b class="znextb">' + escapeHtml(z.nextSeat) + '</b></p>' +
           '</div>' +
