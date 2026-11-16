@@ -1951,26 +1951,46 @@ function genitiveName(name) {
   window.__adminPage = () => {
     const role = S.viewer && S.viewer.role;
     if (role !== 'admin' && role !== 'super') return;
-    const item = (ico, t, sub, fn) => '<div class="rel-opt" onclick="window.__adminGo(' + "'" + fn + "'" + ')">' +
-      '<span class="emo">' + ico + '</span><span><b>' + t + '</b><small>' + sub + '</small></span></div>';
-    const sec = (ico, title) => '<div class="rel-sec"><span class="rel-ico">' + ico + '</span>' + title + '</div>';
-    let body = sec('🛠', 'УДИРДЛАГА');
-    body += item('🎨', 'Дизайн', 'Өнгө, картын хэлбэр, нийтийн холбоос', '__design');
+    // Lucide дүрснүүд — emoji-гийн оронд, пастел дэвсгэртэй квадрат дотор
+    const AD = {
+      palette: '<circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.12-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.55-2.5 5.55-5.55C21.97 6.01 17.46 2 12 2z"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>',
+      link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+      bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
+      image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L7 21"/>',
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+      table: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+      archive: '<rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/>',
+      upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 8 5-5 5 5"/><path d="M12 3v12"/>',
+      chevron: '<path d="m9 18 6-6-6-6"/>'
+    };
+    const ic = (n, sz) => '<svg viewBox="0 0 24 24" width="' + (sz || 18) + '" height="' + (sz || 18) +
+      '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + AD[n] + '</svg>';
+    const item = (ico, tone, t, sub, fn) =>
+      '<button class="ad-card" onclick="window.__adminGo(\'' + fn + '\')">' +
+        '<span class="ad-ic ' + tone + '">' + ic(ico) + '</span>' +
+        '<span class="ad-t"><b>' + t + '</b><small>' + sub + '</small></span>' +
+        '<span class="ad-chev">' + ic('chevron', 16) + '</span></button>';
+    let body = '<div class="ad-sec">Удирдлага</div><div class="ad-grid">';
+    body += item('palette', 'violet', 'Дизайн', 'Өнгө, картын хэлбэр, нийтийн холбоос', '__design');
     // Бүртгүүлсэн хүсэлт, карт холбох хүсэлтийг АДМИН ч хүлээж авна
-    body += item('👥', 'Эрх ба хүсэлт', 'Бүртгэгдсэн хэрэглэгч, карт холбох хүсэлт', '__users');
-    body += item('📜', 'Аудит', 'Хийсэн үйлдлийн түүх', '__audit');
-    body += item('🔗', 'Холбоогүй / Давхар', 'Модтой холбогдоогүй гишүүд, давхар ба төстэй нэрс', '__orphans');
-    body += item('🔔', 'Мэдэгдэл', 'Шинэ бүртгэл, хүсэлтийг утсанд мэдэгдэх', '__pushPage');
+    body += item('users', 'blue', 'Эрх ба хүсэлт', 'Бүртгэгдсэн хэрэглэгч, карт холбох хүсэлт', '__users');
+    body += item('fileText', 'slate', 'Аудит', 'Хийсэн үйлдлийн түүх', '__audit');
+    body += item('link', 'amber', 'Холбоогүй / Давхар', 'Модтой холбогдоогүй гишүүд, давхар нэрс', '__orphans');
+    body += item('bell', 'rose', 'Мэдэгдэл', 'Шинэ бүртгэл, хүсэлтийг утсанд мэдэгдэх', '__pushPage');
+    body += '</div>';
     if (role === 'super') {
-      body += sec('🔐', 'СУПЕР АДМИН');
-      body += item('🖼', 'Анхдагч дүрс', 'Зураггүй хүмүүст харагдах 8 дүрс', '__avatarsPage');
+      body += '<div class="ad-sec">Супер админ</div><div class="ad-grid">';
+      body += item('image', 'violet', 'Анхдагч дүрс', 'Зураггүй хүмүүст харагдах 8 дүрс', '__avatarsPage');
       // Backup файлууд (JSON / Excel / ZIP) — зөвхөн супер админд
-      body += item('⬇', 'Backup', 'Бүх өгөгдлийг JSON файлаар татах', '__backup');
-      body += item('📊', 'Excel', 'Бүх гишүүний мэдээллийг Excel-ээр татах', '__excel');
-      body += item('🗜', 'Бүрэн ZIP', 'Дата + Excel + CSV + D1 схем + тайлбар — нэг файл', '__fullzip');
-      body += item('📋', 'Импорт', 'Excel / JSON-оос гишүүд оруулах', '__import');
+      body += item('download', 'emerald', 'Backup', 'Бүх өгөгдлийг JSON файлаар татах', '__backup');
+      body += item('table', 'emerald', 'Excel', 'Бүх гишүүний мэдээллийг Excel-ээр татах', '__excel');
+      body += item('archive', 'emerald', 'Бүрэн ZIP', 'Дата + Excel + CSV + D1 схем — нэг файл', '__fullzip');
+      body += item('upload', 'blue', 'Импорт', 'Excel / JSON-оос гишүүд оруулах', '__import');
+      body += '</div>';
     }
-    openModal('⚙️ Админ', body, '<button onclick="window.__closeModal()">Хаах</button>');
+    openModal('Админ', body, '<button onclick="window.__closeModal()">Хаах</button>', 'ad-modal');
   };
   // ---------- 🔗 Модтой холбоогүй гишүүд ----------
   let orphansPollT = 0;

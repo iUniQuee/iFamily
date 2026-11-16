@@ -569,6 +569,43 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 .pf-row-t span { display: block; font-size: 11.5px; color: #94A3B8; line-height: 1.35; margin-top: 2px; }
 .pf-done { flex: 0 0 24px; width: 24px; display: grid; place-items: center; color: #10B981; }
 
+/* ---------- АДМИН (SaaS хэв) ---------- */
+.modal.ad-modal { width: min(680px, 96vw); }
+.ad-sec {
+  font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+  color: #94A3B8; margin: 2px 0 8px;
+}
+.ad-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.ad-grid + .ad-sec { margin-top: 16px; }
+.ad-card {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; text-align: left;
+  background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 11px 12px;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.ad-card:hover {
+  border-color: #CBD5E1; box-shadow: 0 6px 16px rgba(15,23,42,.08); transform: translateY(-1px);
+}
+.ad-ic {
+  flex: 0 0 36px; width: 36px; height: 36px; border-radius: 10px;
+  display: grid; place-items: center;
+}
+.ad-ic svg { display: block; }
+.ad-ic.violet { background: #F3E8FF; color: #7E22CE; }
+.ad-ic.blue { background: #E0F2FE; color: #0369A1; }
+.ad-ic.emerald { background: #DCFCE7; color: #047857; }
+.ad-ic.amber { background: #FEF3C7; color: #B45309; }
+.ad-ic.rose { background: #FFE4E6; color: #BE123C; }
+.ad-ic.slate { background: #F1F5F9; color: #475569; }
+.ad-card { white-space: normal; }
+.ad-t { flex: 1; min-width: 0; }
+.ad-t b { display: block; font-size: 13px; font-weight: 700; color: #0F172A; }
+.ad-t small { display: block; font-size: 11.5px; color: #94A3B8; line-height: 1.35; margin-top: 1px; white-space: normal; }
+.ad-chev { flex: 0 0 auto; display: grid; place-items: center; color: #CBD5E1; }
+.ad-card:hover .ad-chev { color: #94A3B8; }
+@media (min-width: 560px) {
+  .ad-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+
 /* ---------- Апп нээгдэх үеийн splash (PWA лого) ---------- */
 #splash {
   position: fixed; inset: 0; z-index: 9999;
@@ -1057,7 +1094,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=438"></script>
+<script src="/tree_client.js?v=441"></script>
 </body>
 </html>`;
 }
