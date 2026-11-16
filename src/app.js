@@ -183,14 +183,27 @@ async function buildState(user, env, opts = {}) {
       bio = new Set([...bioSet(ctx.rel, root)].filter(id => ctx.bio.has(id)));
     }
   }
+  // Цомгийн эхний зурагтай гишүүд — нүүр зураггүй бол түүгээр харуулна
+  const albumFirst = new Set();
+  try {
+    const rows = await all(env, 'SELECT member_id, MIN(id) AS pid FROM member_photos GROUP BY member_id');
+    for (const r of rows) albumFirst.add(r.member_id);
+  } catch (e) { /* member_photos хүснэгт хоосон үед алгасна */ }
   const members = ctx.members.filter(m => vis.has(m.id)).map(m => {
     const x = sanitize(m, ctx.isAdmin || bio.has(m.id), !opts.publicView && canEdit(user, m.id, ctx.trMap));
     // Зурагтай (base64) гишүүдийн зургийг үндсэн state-д БҮТНЭЭР хийхгүй —
     // 5 зураг л 650KB болж, мод ачаалахад удаан болдог. Карт нь тусад нь
     // /api/members/:id/photo-оос lazy авна. Профайлд бүтэн зураг хэвээр.
-    if (!opts.publicView && x.photo && /^data:image\//i.test(String(m.photo || ''))) {
+    // DB-д «lazy» линк хадгалагдсан бол (хуучин бичлэг) эвдэрсэн зураг гарахаас сэргийлж
+    // цомгийн эхний зураг руу шилжүүлнэ
+    const storedLazy = /^\/api\/members\/\d+\/photo$/i.test(String(m.photo || ''));
+    if (!x.photo || storedLazy) {
+      x.photo = albumFirst.has(m.id) ? '/api/members/' + m.id + '/photo' : null;
+    } else if (!opts.publicView && /^data:image\//i.test(String(m.photo || ''))) {
       x.photo = '/api/members/' + m.id + '/photo';
     }
+    // Нүүр зураг байхгүй ч цомогт зурагтай бол эхний зургийг нүүр болгож харуулна
+    if (!x.photo && albumFirst.has(m.id)) x.photo = '/api/members/' + m.id + '/photo';
     return x;
   });
   const links = [];
@@ -1434,13 +1447,24 @@ async function api(req, env, url, path) {
       const ctx = await contextOf(user, env);
       if (!ctx.vis.has(id)) throw httpErr(404, 'Зураг олдохгүй');
     }
-    const raw = String(mem.photo || '');
-    const m = raw.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
-    if (!m) throw httpErr(404, 'Зураг олдохгүй');
+    let src = String(mem.photo || '');
+    if (LAZY_PHOTO_RE.test(src)) src = ''; // өөрөө рүүгээ заасан линк — эвдэрсэн зураг
+    // Нүүр зураг тохируулаагүй бол цомгийн хамгийн эхний зургийг харуулна
+    if (!src) {
+      const ph = await get(env, 'SELECT url FROM member_photos WHERE member_id=? ORDER BY id LIMIT 1', id);
+      src = String((ph && ph.url) || '');
+    }
+    if (!src) throw httpErr(404, 'Зураг олдохгүй');
+    const m = src.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+    if (!m) {
+      if (/^https?:\/\//i.test(src)) return Response.redirect(src, 302);
+      throw httpErr(404, 'Зураг олдохгүй');
+    }
     const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
     return new Response(bytes, { headers: {
       'content-type': m[1],
-      'cache-control': 'private, max-age=300',
+      // Нүүр зураг солигдмогц шууд шинэ зураг харагдана (хуучин кэш гацахгүй)
+      'cache-control': 'private, max-age=0, must-revalidate',
       'x-content-type-options': 'nosniff'
     } });
   }

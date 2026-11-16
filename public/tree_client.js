@@ -3118,6 +3118,13 @@ function genitiveName(name) {
   // ---------- ЗУРГИЙН ТОМ ХАРАГДАЦ · КОММЕНТ · НҮҮР ЗУРАГ ----------
   const lbBox = () => document.getElementById('lb');
   window.__lbClose = () => { const b = lbBox(); if (b) b.remove(); };
+  // Lightbox-ийн жагсаалт (нүүр зураг + цомгийн зургууд) ба одоогийн байрлал
+  let lbMid = 0, lbList = [], lbIdx = 0;
+  window.__lbNav = (dir) => {
+    if (lbList.length < 2) return;
+    lbIdx = (lbIdx + dir + lbList.length) % lbList.length;
+    window.__photoView(lbMid, lbList[lbIdx].pid);
+  };
   window.__photoView = async (mid, pid) => {
     try {
       const mem = byId.get(mid) || {};
@@ -3130,12 +3137,27 @@ function genitiveName(name) {
       let cj = { comments: [] };
       try { cj = await getJson('/api/members/' + mid + '/photos/' + pid + '/comments'); } catch (e) {}
       const editable = !!mem.e, isCover = pid === 0, cm = cj.comments || [];
+      // Шилжих жагсаалт: [0]=нүүр зураг, дараа нь цомгийн зургууд
+      lbMid = mid;
+      lbList = [];
+      if (cover) lbList.push({ pid: 0, url: cover });
+      photos.forEach(x => lbList.push({ pid: x.id, url: x.url }));
+      const at = lbList.findIndex(x => x.pid === pid);
+      lbIdx = at >= 0 ? at : 0;
+      const many = lbList.length > 1;
       let h = '<div id="lb" style="position:fixed;inset:0;z-index:9999;background:rgba(12,10,8,.94);overflow:auto;-webkit-overflow-scrolling:touch">';
       h += '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;color:#fff;position:sticky;top:0;background:rgba(12,10,8,.94);z-index:2">';
       h += '<b style="font-size:14px">' + escapeHtml(mem.name || '') + '</b>';
-      h += '<span style="opacity:.7;font-size:12px">' + (isCover ? 'Нүүр зураг' : 'Зураг') + '</span><span style="flex:1"></span>';
+      h += '<span style="opacity:.7;font-size:12px">' + (isCover ? 'Нүүр зураг' : 'Зураг') +
+        (many ? ' · ' + (lbIdx + 1) + '/' + lbList.length : '') + '</span><span style="flex:1"></span>';
       h += '<button onclick="window.__lbClose()" style="background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:9px 13px;font-size:15px">✕</button></div>';
-      h += '<div style="text-align:center;padding:0 8px"><img src="' + escapeHtml(url) + '" alt="" style="max-width:100%;max-height:58vh;border-radius:12px;object-fit:contain;background:#000"></div>';
+      const arrow = (dir, sign) => '<button onclick="event.stopPropagation();window.__lbNav(' + dir + ')" ' +
+        'style="position:absolute;top:50%;' + (dir < 0 ? 'left:6px' : 'right:6px') + ';transform:translateY(-50%);' +
+        'background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:50%;width:44px;height:44px;font-size:24px;line-height:1;z-index:3">' + sign + '</button>';
+      h += '<div id="lb_wrap" style="position:relative;text-align:center;padding:0 8px;touch-action:pan-y;user-select:none">' +
+        (many ? arrow(-1, '‹') : '') +
+        '<img id="lb_img" src="' + escapeHtml(url) + '" alt="" style="max-width:100%;max-height:58vh;border-radius:12px;object-fit:contain;background:#000">' +
+        (many ? arrow(1, '›') : '') + '</div>';
       let bs = '';
       if (editable && !isCover) bs += '<button onclick="window.__setCover(' + mid + ',' + pid + ')" style="flex:1;background:#f0b73e;color:#3a2a00;border:0;border-radius:12px;padding:12px;font-weight:700">⭐ Нүүр зураг болгох</button>';
       if (editable) bs += '<button onclick="window.__lbClose();window.__addMemPhoto(' + mid + ')" style="flex:1;background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:12px;padding:12px">＋ Зураг нэмэх</button>';
@@ -3161,6 +3183,21 @@ function genitiveName(name) {
       if (inp) inp.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') { ev.preventDefault(); window.__lbSend(mid, pid); }
       });
+      // Хуруугаар гулсуулах (swipe) — гар утсан дээр зургуудын хооронд шилжинэ
+      const wrap = document.getElementById('lb_wrap');
+      if (wrap && many) {
+        let x0 = null, y0 = null;
+        wrap.addEventListener('touchstart', (ev) => {
+          const t = ev.touches[0]; x0 = t.clientX; y0 = t.clientY;
+        }, { passive: true });
+        wrap.addEventListener('touchend', (ev) => {
+          if (x0 == null) return;
+          const t = ev.changedTouches[0];
+          const dx = t.clientX - x0, dy = t.clientY - y0;
+          x0 = null;
+          if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) window.__lbNav(dx < 0 ? 1 : -1);
+        }, { passive: true });
+      }
     } catch (e) { toast(e.message); }
   };
   window.__lbSend = async (mid, pid) => {
