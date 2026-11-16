@@ -657,6 +657,15 @@
     return ids;
   }
 
+  // ---------- ТУРШИЛТ: шинэ минималист харагдац ----------
+  // Зөвхөн ургийн овог нь «Туршилт» гэсэн гишүүдэд үйлчилнэ — бусад карт,
+  // шугам, байрлал, товчны логик хэвээр.
+  const TRIAL_CLAN = 'Туршилт';
+  function isTrialId(id) {
+    const m = byId.get(Number(id));
+    return !!m && String(m.clan || '').trim() === TRIAL_CLAN;
+  }
+  const isTrialPair = (a, b) => isTrialId(a) && isTrialId(b);
   // ---------- render ----------
   // Нээсэн хүний хань хажууд нь (нэг хос) зогсож байвал л хамт тодорно.
   function coupleNeighbor(m, n) {
@@ -673,6 +682,7 @@
       ? '<img class="ava" src="' + escapeHtml(avUrl) + '" alt="" loading="lazy" decoding="async">'
       : '<div class="ava">' + (m.emoji ? escapeHtml(m.emoji) : escapeHtml(initial)) + '</div>';
     const cls = ['card', m.sex === 'f' ? 'f' : m.sex === 'm' ? 'm' : 'q'];
+    if (isTrialId(m.id)) cls.push('trial', m.sex === 'f' ? 'trial-f' : 'trial-m');
     const isDead = m.alive === 0 || !!(m.death_date && String(m.death_date).trim());
     if (isDead) cls.push('dead');
     if (selected === m.id) cls.push('sel');
@@ -782,10 +792,10 @@
       if (na && nb && Math.abs(na.y - nb.y) < 4) {
         const l = Math.min(na.x, nb.x) - 5;
         const r = Math.max(na.x + (na.w || CW), nb.x + (nb.w || CW)) + 5;
-        svg += '<rect class="link-plat" x="' + l + '" y="' + (na.y - 7) + '" width="' + (r - l) +
+        svg += '<rect class="link-plat' + (isTrialPair(e.a, e.b) ? ' trial-plat' : '') + '" x="' + l + '" y="' + (na.y - 7) + '" width="' + (r - l) +
           '" height="' + (CH + 14) + '" rx="12"/>';
       } else {
-        svg += '<rect class="link-plat" x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="12"/>';
+        svg += '<rect class="link-plat' + (isTrialPair(e.a, e.b) ? ' trial-plat' : '') + '" x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="12"/>';
       }
     }
     // Хосын тавцан (b) аль хүүхдийг аль хэдийн холбосон бэ — тэдэнд эцэг/эх
@@ -820,7 +830,16 @@
             sx2 = dn.x + (dn.w || CW) / 2; sy2 = dn.y;
           }
         }
-        svg += '<line class="link-s' + hlS(e.a, e.b) + '" x1="' + sx1 + '" y1="' + sy1 + '" x2="' + sx2 + '" y2="' + sy2 + '"/>';
+        const trialS = isTrialPair(e.a, e.b);
+        svg += '<line class="link-s' + hlS(e.a, e.b) + (trialS ? ' trial-s' : '') + '" x1="' + sx1 + '" y1="' + sy1 + '" x2="' + sx2 + '" y2="' + sy2 + '"/>';
+        // ТУРШИЛТ: хосын шугамын голд цагаан дугуй + саарал зүрх
+        if (trialS) {
+          // Хосын шугамын голоос доош бага зэрэг буулгана — шугам дээр
+          // «＋/✎» товчнууд хөвдөг тул зүрх тэдний доор цэвэрхэн байрлана.
+          const hx = Math.round((sx1 + sx2) / 2), hy = Math.round((sy1 + sy2) / 2) + 34;
+          svg += '<g class="trial-heart"><circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>' +
+            '<text x="' + hx + '" y="' + (hy + 3.5) + '" text-anchor="middle" font-size="11" fill="#94A3B8">&#9829;</text></g>';
+        }
       } else if (e.t === 'b') {
         // Хосын салбар: гол шугмаар → хэвтээ тавцан → хүүхэд бүрт салаа.
         // ХОСЫН НЭГ нь л харагдаж байсан ч (жишээ нь эх нь нуугдмал) шугмыг
@@ -880,9 +899,10 @@
         // картын доод ирмэг хүртэл завсар үлдэхгүй.
         // Бүх холбоос ижил өндөртэй байхын тулд шугмыг картын доод ирмэгээс
         // (тавцангийн доороос) эхлүүлнэ — хосын шугам хүртэл дээш сунгахгүй.
+        const trialB = isTrialPair(e.a, e.b) ? ' trial-b' : '';
         if (!stemCls) stemCls = 'link-s' + busCls;
-        svg += '<path class="' + stemCls + '" d="M ' + stemX + ' ' + stemY0 + ' L ' + stemX + ' ' + bY + '"/>';
-        if (bx2 > bx1) svg += '<path class="link-s' + busCls + '" d="M ' + bx1 + ' ' + bY + ' L ' + bx2 + ' ' + bY + '"/>';
+        svg += '<path class="' + stemCls + trialB + '" d="M ' + stemX + ' ' + stemY0 + ' L ' + stemX + ' ' + bY + '"/>';
+        if (bx2 > bx1) svg += '<path class="link-s' + busCls + trialB + '" d="M ' + bx1 + ' ' + bY + ' L ' + bx2 + ' ' + bY + '"/>';
         // Салаа нь тавцангийн шугамаас (e.y1) эхэлж, карт хүртэл ТАСРАЛГҮЙ
         // үргэлжилнэ. Өмнө нь s.y0 ба e.y1 бага зэрэг зөрөхөд (эсвэл голын
         // шугамтай 1-2px шилжихэд) шугам дундаа тасарч харагддаг байв.
@@ -895,10 +915,11 @@
           const yEnd = cn ? (cn.y < bY ? cn.y + CH : cn.y) : s.y1;
           // Голын шугамтай бараг нэг тэнхлэгт бол хосын голоос шууд нэг
           // тасралтгүй босоо шугам татна (жижиг шатлал гарахгүй).
+          const trialStub = isTrialId(s.c) ? ' trial-c' : '';
           if (Math.abs(s.x - stemX) <= 3) {
-            svg += '<path class="link-c' + scls + '" d="M ' + stemX + ' ' + bY + ' L ' + s.x + ' ' + yEnd + '"/>';
+            svg += '<path class="link-c' + scls + trialStub + '" d="M ' + stemX + ' ' + bY + ' L ' + s.x + ' ' + yEnd + '"/>';
           } else {
-            svg += '<path class="link-c' + scls + '" d="M ' + s.x + ' ' + bY + ' L ' + s.x + ' ' + yEnd + '"/>';
+            svg += '<path class="link-c' + scls + trialStub + '" d="M ' + s.x + ' ' + bY + ' L ' + s.x + ' ' + yEnd + '"/>';
           }
           // Дээшээ үе (өөрөө эсвэл өвөг) рүү явсан салаа бол картаас
           // эхлээд тавцангаар шугмаа хүртэл, дараа нь шугмаагаар хосын
@@ -929,7 +950,7 @@
           else { y1 = pn.y + CH / 2; y2 = cn.y + CH / 2; }
         }
         const my = Math.round((y1 + y2) / 2);
-        svg += '<path class="link-c' + hlC(e.p, e.c) + '" d="M ' + x1 + ' ' + y1 +
+        svg += '<path class="link-c' + hlC(e.p, e.c) + (isTrialId(e.p) && isTrialId(e.c) ? ' trial-c' : '') + '" d="M ' + x1 + ' ' + y1 +
           ' L ' + x1 + ' ' + my + ' L ' + x2 + ' ' + my + ' L ' + x2 + ' ' + y2 + '"/>';
       }
     }
@@ -941,6 +962,8 @@
       hiddenCount = (L.nodes || []).filter(n => !shown.has(n.id)).length;
     }
     $('links').innerHTML = svg;
+    // ТУРШИЛТ: дэвсгэр #F8FAFC зөвхөн туршилтын гишүүд дэлгэцэнд байх үед
+    document.body.classList.toggle('has-trial', [...shown].some(id => isTrialId(id)));
     // картууд
     let html = '';
     for (const n of L.nodes || []) {
