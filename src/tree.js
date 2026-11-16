@@ -128,6 +128,12 @@ export function bloodLineSet(rel, rootId) {
 // Хүрээ (closeCircle): өөрөө + цусны хамаарал (дээд тал нь maxDist үе) + тэдний эхнэр/нөхөр
 export function visibleSet(rel, rootId, maxDist = 1000) {
   const blood = bfsUD(rel, rootId, maxDist);
+  // ГЭРЛЭСЭН ХОС: эхнэр/нөхөр нь бие биенийхээ талын ургийн модыг БҮРЭН харна.
+  // Зөвхөн тухайн хосуудад — тэдний ах/дүү, эцэг/эхэд нөгөө тал НЭЭГДЭХГҮЙ
+  // (тэдний vis нь өөрсдийн member_id-аар тусад нь тооцогдоно).
+  for (const sp of rel.sp.get(Number(rootId)) || []) {
+    for (const id of bloodLineSet(rel, sp)) blood.add(id);
+  }
   const base = new Set(blood);
   for (const id of blood) for (const s of rel.sp.get(id) || []) base.add(s);
   const out = new Set(base);

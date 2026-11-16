@@ -16,7 +16,7 @@ export const FAM_GAP = 46;      // өөр гэр бүл/салбар хооро�
 
 // viewer-ийн ЦУСАН ШУГАМ: өвөг (хязгааргүй дээшээ), өвөг бүрийн ах/дүү,
 // өөрөө, өөрийн үр удам. Үеийн дугаар: өөрөө 0, эцэг/эх 1, өвөө 2 …
-export function lineage(rel, viewerId) {
+export function lineageRaw(rel, viewerId) {
   const ids = new Set([viewerId]);
   const gen = new Map([[viewerId, 0]]);
   // 1) дээшээ — бүх өвөг
@@ -61,6 +61,29 @@ export function lineage(rel, viewerId) {
   return { ids, gen };
 }
 
+// Хоёр шугамыг нэгтгэнэ (id ба үеийн дугаар)
+export function mergeLineage(into, from) {
+  for (const id of from.ids) {
+    if (!into.ids.has(id)) into.ids.add(id);
+    if (!into.gen.has(id)) {
+      const g = from.gen.get(id);
+      if (g != null) into.gen.set(id, g);
+    }
+  }
+  return into;
+}
+
+// viewer-ийн шугам + ГЭРЛЭСЭН ХАНЬ ТАЛЫН шугам.
+// Эрх: эхнэр, нөхөр нь бие биенийхээ ургийн модыг бүрэн харна — зөвхөн тэд.
+export function lineage(rel, viewerId) {
+  const own = lineageRaw(rel, viewerId);
+  for (const sp of rel.sp.get(Number(viewerId)) || []) {
+    if (sp == null || sp === viewerId) continue;
+    mergeLineage(own, lineageRaw(rel, sp));
+  }
+  return own;
+}
+
 // Бүтэн модны байрлал + харагдах картууд
 export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKids }) {
   const visSet = vis || new Set((members || []).map(m => m.id));
@@ -81,6 +104,11 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
   const spousesOf = (id) => [...new Set([...(rel.sp.get(id) || []), ...(coPar.get(id) || [])])];
 
   const lin = lineage(rel, viewerId);
+  // Хос нь union-д бүртгэгдээгүй ч (зөвхөн хамт хүүхэдтэй) хань талын мод багтана
+  for (const sp of spousesOf(viewerId)) {
+    if (sp == null || sp === viewerId || !visSet.has(sp)) continue;
+    mergeLineage(lin, lineageRaw(rel, sp));
+  }
   const blood = new Set([...lin.ids].filter(id => visSet.has(id)));
   blood.add(viewerId);
   // ХАНЬ (бэр/хүргэн) ч анхдагчаар харагдана — D1-д байгаа бүх гэр бүлийн гишүүн.
