@@ -1301,7 +1301,7 @@ function genitiveName(name) {
         '<div class="zrow zrow-seat">' + seatWheelHtml(z) +
           '<div class="zbody">' +
             '<h3>' + escapeHtml(z.seat) + '</h3>' +
-            '<p class="zsmall">' + z.nowY + ' оны билгийн жилд ' + z.lunarAge + ' настай — ' + sexWord + ' хүн 1 настайдаа ' + z.seatStartWord + ' эхлэн ' + z.seatDirWord + ' тоолно.</p>' +
+            '<p class="zsmall">' + z.nowY + ' оны билгийн жилд ' + z.lunarAge + ' настай. ' + cap1(sexWord) + ' хүн 1 настайдаа ' + z.seatStartWord + ' эхлэн ' + z.seatDirWord + ' тоолно.</p>' +
             '<p class="zsmall">Төрсөн өдөр Цагаан сартай давхцвал <span class="zstrong">' + escapeHtml(z.nextSeat) + '</span> суудалд тооцогдоно.</p>' +
             '<p class="zsmall znext">Ирэх Цагаан сар (' + (z.nowY + 1) + '.' + z.nextTsagaan + ')-аас хойш: <b class="znextb">' + escapeHtml(z.nextSeat) + '</b></p>' +
           '</div>' +
