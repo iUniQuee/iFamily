@@ -345,6 +345,18 @@ html[data-card] .card.f .box, .card.f .box { border: 2px solid #F9A8D4 !importan
 html[data-card] .card.q .box, .card.q .box { border: 2px solid #E2E8F0 !important; }
 /* Дээд үеийн картын хүрээ — алтан 2.5px (хүйсийн хүрээнээс дээгүүр) */
 html[data-card] .card.asc .box, .card.asc .box { border: 2.5px solid #F59E0B !important; }
+/* Хуучин «best» хэвнээс үлдсэн өнгөт ДЭЭД ТУУЗЫГ бүрмөсөн арилгав:
+   бүх картын дээд хүрээ нь хажуугийн хүрээтэй ЯГ ижил зузаан/өнгөтэй. */
+html[data-card] .card .box { border-top-width: 2px !important; }
+html[data-card] .card.m .box, html[data-card="best"] .card.m .box { border-top: 2px solid #93C5FD !important; }
+html[data-card] .card.f .box, html[data-card="best"] .card.f .box { border-top: 2px solid #F9A8D4 !important; }
+html[data-card] .card.q .box, html[data-card="best"] .card.q .box { border-top: 2px solid #E2E8F0 !important; }
+html[data-card] .card.dead.m .box, html[data-card="best"] .card.dead.m .box { border-top-color: #93C5FD !important; }
+html[data-card] .card.dead.f .box, html[data-card="best"] .card.dead.f .box { border-top-color: #F9A8D4 !important; }
+html[data-card] .card.dead.q .box, html[data-card="best"] .card.dead.q .box { border-top-color: #E2E8F0 !important; }
+/* Дээд үеийн алтан хүрээ хамгийн сүүлд — бүх 4 талдаа 2.5px алт */
+html[data-card] .card.asc .box, html[data-card="best"] .card.asc .box { border: 2.5px solid #F59E0B !important; }
+
 /* Зургийн доод хагаст харанхуй градиент — нэр/он тод уншигдана */
 .card .box::after {
   content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
@@ -831,7 +843,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=424"></script>
+<script src="/tree_client.js?v=426"></script>
 </body>
 </html>`;
 }
