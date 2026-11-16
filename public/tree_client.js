@@ -1784,11 +1784,12 @@ function genitiveName(name) {
     body += item('⬇', 'Backup', 'Бүх өгөгдлийг JSON файлаар татах', '__backup');
     body += item('📊', 'Excel', 'Бүх гишүүний мэдээллийг Excel-ээр татах', '__excel');
     body += item('🗜', 'Бүрэн ZIP', 'Дата + Excel + CSV + D1 схем + тайлбар — нэг файл', '__fullzip');
+    // Бүртгүүлсэн хүсэлт, карт холбох хүсэлтийг АДМИН ч хүлээж авна
+    body += item('👥', 'Эрх ба хүсэлт', 'Бүртгэгдсэн хэрэглэгч, карт холбох хүсэлт', '__users');
     if (role === 'super') {
       body += sec('🔐', 'СУПЕР АДМИН');
       body += item('📋', 'Импорт', 'Excel / JSON-оос гишүүд оруулах', '__import');
       body += item('📜', 'Аудит', 'Хийсэн үйлдлийн түүх', '__audit');
-      body += item('👥', 'Эрх', 'Хэрэглэгчийн эрх, карт холбох', '__users');
     }
     body += item('🔗', 'Холбоогүй / Давхар', 'Модтой холбогдоогүй гишүүд, давхар ба төстэй нэрс', '__orphans');
     body += item('🔔', 'Мэдэгдэл', 'Шинэ бүртгэл, хүсэлтийг утсанд мэдэгдэх', '__pushPage');
@@ -3316,9 +3317,11 @@ function genitiveName(name) {
     const rows = all.slice(from, from + USERS_PER_PAGE).map(u =>
       '<div class="list-row"><span class="uhead"><span class="grow">' + escapeHtml(u.name) + '<br><small style="opacity:.6">' + escapeHtml(u.phone) + '</small></span>' + delBtn(u) + '</span>' +
       '<button onclick="window.__resetCode(' + u.id + ')" title="Нэг удаагийн код үүсгэх">Код</button>' +
-      '<select onchange="window.__setRole(' + u.id + ',this.value)">' +
-      ['member', 'coord', 'admin', 'super'].map(r =>
-        '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + roleName(r) + '</option>').join('') + '</select>' +
+      (S.viewer && S.viewer.role === 'super'
+        ? '<select onchange="window.__setRole(' + u.id + ',this.value)">' +
+          ['member', 'coord', 'admin', 'super'].map(r =>
+            '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + roleName(r) + '</option>').join('') + '</select>'
+        : '<span style="font-size:12.5px;color:var(--muted);flex:0 0 auto">' + roleName(u.role) + '</span>') +
       '<select onchange="window.__setLink(' + u.id + ',this.value)"><option value="">— карт байхгүй —</option>' +
       j.members.map(x => {
         const pat = patronymicOf(x.id);
