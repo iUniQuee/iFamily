@@ -497,6 +497,34 @@ button.btn-ok:hover { filter: brightness(.9); }
 .zkvl { font-size:11px; font-weight:800; color:#94a3b8; letter-spacing:.2px; }
 .zkvv { font-size:12.5px; font-weight:600; color:#1e293b; margin-top:3px; line-height:1.5; }
 @media (max-width:400px){ .zwheel{width:124px;height:124px} .zwcenter{width:48px;height:48px} .zring{width:52px;height:52px;font-size:24px} .zrow{gap:10px} }
+/* ---------- Түвшин ахих баяр хүргэлт ---------- */
+.lvup-wrap{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:rgba(6,18,12,.62);backdrop-filter:blur(4px);animation:lvFade .22s ease}
+.lvup-card{position:relative;width:min(94vw,380px);padding:26px 20px 20px;border-radius:24px;background:var(--panel);border:1px solid var(--line);box-shadow:0 26px 70px rgba(0,0,0,.42);text-align:center;overflow:hidden;animation:lvPop .5s cubic-bezier(.2,.9,.25,1.25)}
+.lvup-glow{position:absolute;left:-15%;right:-15%;top:-90px;height:200px;border-radius:50%;filter:blur(34px);opacity:.6;animation:lvGlow 2.6s ease-in-out infinite}
+.lvup-title{position:relative;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.lvup-emoji{position:relative;display:block;font-size:64px;line-height:1.1;margin:8px auto 6px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.22))}
+.lvup-name{position:relative;font-size:23px;font-weight:900;line-height:1.25}
+.lvup-name b{color:#2fae6a}
+.lvup-sub{position:relative;font-size:13px;color:var(--muted);margin-top:8px}
+.lvup-btn{position:relative;margin-top:18px;width:100%;padding:12px;border:0;border-radius:14px;background:#2fae6a;color:#fff;font-weight:800;font-size:15px}
+.lvup-confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9998}
+.lvup-p{position:absolute;top:-14vh;border-radius:2px;animation-name:lvFall;animation-timing-function:linear;animation-fill-mode:forwards}
+@keyframes lvFade{from{opacity:0}to{opacity:1}}
+@keyframes lvPop{from{transform:scale(.86) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+@keyframes lvGlow{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:.85;transform:scale(1.14)}}
+@keyframes lvFall{0%{transform:translate3d(0,0,0) rotate(0)}100%{transform:translate3d(60px,116vh,0) rotate(720deg)}}
+.fx-sprout{animation:fxSprout 1.8s ease-in-out infinite}
+.fx-sway{animation:fxSway 2.2s ease-in-out infinite}
+.fx-bounce{animation:fxBounce 1.5s ease-in-out infinite}
+.fx-spin{animation:fxSpin 3.4s linear infinite}
+.fx-rise{animation:fxRise 2s ease-in-out infinite}
+.fx-crown{animation:fxCrown 1.7s ease-in-out infinite}
+@keyframes fxSprout{0%{transform:scale(.86) translateY(4px)}55%{transform:scale(1.08) translateY(-2px)}100%{transform:scale(.86) translateY(4px)}}
+@keyframes fxSway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes fxBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-13px)}}
+@keyframes fxSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes fxRise{0%,100%{transform:translateY(5px) scale(1)}50%{transform:translateY(-9px) scale(1.06)}}
+@keyframes fxCrown{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
 `;
 
 const bootScript = `
@@ -740,7 +768,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=373"></script>
+<script src="/tree_client.js?v=374"></script>
 </body>
 </html>`;
 }

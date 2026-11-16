@@ -151,6 +151,35 @@ export async function scoreNewEvent(env, user, memberId) {
   return awardField(env, user, memberId, 'event_' + n, 5);
 }
 
+// Түвшин ахих мэдэгдэл: хэрэглэгчийн оноо шинэ түвшинд хүрсэн бол түүнийг буцаана.
+// level_seen — хамгийн сүүлд мэдэгдсэн түвшин. NULL бол анх удаа: одоогийн
+// түвшингээр тэмдэглээд мэдэгдэл ГАРГАХГҮЙ (дахин ачаалах бүрт гарахгүй).
+export async function levelUpFor(env, user) {
+  if (!user) return null;
+  const sum = await get(env, 'SELECT COALESCE(SUM(points),0) AS s FROM field_scores WHERE user_id=?', user.id);
+  const score = Number(sum && sum.s) || 0;
+  const lv = levelOf(score);
+  const row = await get(env, 'SELECT level_seen FROM users WHERE id=?', user.id);
+  const seenRaw = row ? row.level_seen : null;
+  const seen = Number(seenRaw) || 0;
+  if (seenRaw == null || seenRaw === '') {
+    await run(env, 'UPDATE users SET level_seen=? WHERE id=?', lv.n, user.id);
+    return null;
+  }
+  if (lv.n <= seen) return null;
+  return { n: lv.n, name: lv.name, score, prev: seen };
+}
+
+// Мэдэгдэл гарсны дараа дуудна — «нэг түвшинд нэг л удаа» баталгаа
+export async function markLevelSeen(env, user, n) {
+  if (!user) return 0;
+  const sum = await get(env, 'SELECT COALESCE(SUM(points),0) AS s FROM field_scores WHERE user_id=?', user.id);
+  const lv = levelOf(Number(sum && sum.s) || 0);
+  const want = Math.min(lv.n, Math.max(0, Math.round(Number(n) || 0)));
+  await run(env, 'UPDATE users SET level_seen=? WHERE id=?', want, user.id);
+  return want;
+}
+
 // /api/scores хариулт: түвшин, лидерүүд, бүрэлдэхүүн, дараагийн алхам, дүрэм, бүртгэл
 export async function scoresPayload(env, user, ctx, canEdit) {
   const rows = await all(env, 'SELECT member_id, field_key, user_id, points FROM field_scores');

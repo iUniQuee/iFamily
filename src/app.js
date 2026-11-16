@@ -4,7 +4,7 @@ import {
   layoutTree, sortMembers, buildRelations, visibleSet, bioSet, bloodLineSet, isAncestor, focusCards, focusBlood, inlawSet
 } from './tree.js';
 import { loginPage, appPage, notFoundPage } from './ui.js';
-import { scoreMember, scoreNewPhoto, scoreNewEvent, scoresPayload } from './scores.js';
+import { scoreMember, scoreNewPhoto, scoreNewEvent, scoresPayload, levelUpFor, markLevelSeen } from './scores.js';
 import { buildXlsx } from './xlsx.js';
 import { makeZip } from './zip.js';
 import { buildFullLayout, lineage } from './fulltree.js';
@@ -2301,6 +2301,17 @@ async function api(req, env, url, path) {
     await insert(env, 'INSERT INTO album_photos(album_id, url, caption) VALUES(?,?,?)',
       id, url2, String(b.caption || '').trim());
     return json({ ok: true });
+  }
+
+  // --- түвшин ахих мэдэгдэл (нүүр хуудсанд нэг удаа) ---
+  if (path === '/api/level-up' && method === 'GET') {
+    need();
+    return json({ levelUp: await levelUpFor(env, user) });
+  }
+  if (path === '/api/level-seen' && method === 'POST') {
+    need();
+    const b = await readBody(req);
+    return json({ ok: true, n: await markLevelSeen(env, user, b.n) });
   }
 
   // --- оноо / түвшин / лидерүүд ---

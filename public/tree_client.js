@@ -2668,6 +2668,76 @@ function genitiveName(name) {
     } catch (e) { toast(e.message); }
   };
 
+  // ---------- Түвшин ахих баяр хүргэлт (нэг түвшинд нэг л удаа) ----------
+  // Түвшин бүр өөрийн дүрс, өнгө, хөдөлгөөнтэй.
+  const LEVEL_FX = {
+    1:  { emoji: '🌱', cls: 'fx-sprout', colors: ['#8ce99a', '#69db7c', '#b2f2bb', '#d8f5a2'] },
+    2:  { emoji: '🌿', cls: 'fx-sway',   colors: ['#69db7c', '#38d9a9', '#96f2d7', '#c3fae8'] },
+    3:  { emoji: '🌱✨', cls: 'fx-bounce', colors: ['#94d82d', '#ffd43b', '#d8f5a2', '#fcc419'] },
+    4:  { emoji: '🍃', cls: 'fx-sway',   colors: ['#8ce99a', '#51cf66', '#c0eb75', '#a9e34b'] },
+    5:  { emoji: '🌿🌳', cls: 'fx-rise',   colors: ['#40c057', '#2f9e44', '#a9e34b', '#d3f9d8'] },
+    6:  { emoji: '🌳', cls: 'fx-rise',   colors: ['#2f9e44', '#37b24d', '#e6fcf5', '#8ce99a'] },
+    7:  { emoji: '📜', cls: 'fx-sway',   colors: ['#e0a458', '#f08c00', '#ffe8cc', '#ffd8a8'] },
+    8:  { emoji: '✍️', cls: 'fx-spin',   colors: ['#e0a458', '#4c6ef5', '#ffe8cc', '#a5d8ff'] },
+    9:  { emoji: '📖', cls: 'fx-bounce', colors: ['#4c6ef5', '#74c0fc', '#dbe4ff', '#ffd43b'] },
+    10: { emoji: '👑', cls: 'fx-crown',  colors: ['#ffd43b', '#fab005', '#fff3bf', '#ffe066'] }
+  };
+
+  function levelUpConfetti(host, colors) {
+    const N = 64;
+    for (let i = 0; i < N; i++) {
+      const p = document.createElement('i');
+      p.className = 'lvup-p';
+      const c = colors[i % colors.length];
+      const w = 6 + Math.round(Math.random() * 7);
+      p.style.left = Math.round(Math.random() * 100) + '%';
+      p.style.width = w + 'px';
+      p.style.height = (8 + Math.round(Math.random() * 10)) + 'px';
+      p.style.background = c;
+      p.style.opacity = String(0.75 + Math.random() * 0.25);
+      if (i % 5 === 0) p.style.borderRadius = '50%';
+      p.style.animationDuration = (2.1 + Math.random() * 2.2).toFixed(2) + 's';
+      p.style.animationDelay = (Math.random() * 0.9).toFixed(2) + 's';
+      host.appendChild(p);
+    }
+    setTimeout(() => { host.innerHTML = ''; }, 6500);
+  }
+
+  function showLevelUp(lu) {
+    if (!lu || document.getElementById('lvup')) return;
+    const fx = LEVEL_FX[lu.n] || LEVEL_FX[1];
+    const fmt = (n) => String(n == null ? 0 : n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const wrap = document.createElement('div');
+    wrap.id = 'lvup';
+    wrap.className = 'lvup-wrap';
+    wrap.innerHTML =
+      '<div class="lvup-card">' +
+        '<div class="lvup-glow" style="background:radial-gradient(circle,' + fx.colors[0] + ',' + fx.colors[1] + '00 72%)"></div>' +
+        '<div class="lvup-title">Баяр хүргэе!</div>' +
+        '<span class="lvup-emoji ' + fx.cls + '">' + fx.emoji + '</span>' +
+        '<div class="lvup-name">Та <b>«' + escapeHtml(String(lu.name || '')) + '»</b> түвшинд хүрлээ!</div>' +
+        '<div class="lvup-sub">' + lu.n + '-р түвшин · ' + fmt(lu.score) + ' оноо</div>' +
+        '<button class="lvup-btn" id="lvup-ok">Үргэлжлүүлэх</button>' +
+      '</div>' +
+      '<div class="lvup-confetti" id="lvup-cf"></div>';
+    document.body.appendChild(wrap);
+    levelUpConfetti(wrap.querySelector('#lvup-cf'), fx.colors);
+    const close = () => { const w = document.getElementById('lvup'); if (w) w.remove(); };
+    wrap.querySelector('#lvup-ok').addEventListener('click', close);
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+    setTimeout(close, 11000);
+  }
+
+  async function levelUpCheck() {
+    try {
+      const j = await getJson('/api/level-up');
+      const lu = j && j.levelUp;
+      if (!lu) return;
+      showLevelUp(lu);
+      await post('/api/level-seen', { n: lu.n });
+    } catch (e) { /* мэдэгдэл гаргаж чадаагүй — модонд нөлөөлөхгүй */ }
+  }
+
   // ---------- оноо / түвшин / лидерүүд ----------
   window.__scores = async () => {
     try {
@@ -3373,5 +3443,7 @@ function genitiveName(name) {
     // дэлгэцийн голд. Бүтэн мод руу «Үндсэн мод» товчоор гарна.
     window.__mainTree(S.viewer.member_id);   // Үндсэн мод + өөрийн салбар
   }
+  // Нүүр хуудсанд: түвшин ахсан бол нэг удаагийн баяр хүргэлт
+  if (S.viewer && S.viewer.member_id) setTimeout(() => { levelUpCheck(); }, 900);
   window.addEventListener('resize', () => applyView());
 })();
