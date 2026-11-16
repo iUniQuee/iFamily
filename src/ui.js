@@ -482,7 +482,9 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 }
 .rem-pat { color: #94A3B8; font-weight: 600; }
 .rem-sub { font-size: 11.5px; color: #94A3B8; margin-top: 1px; }
+.rem-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; }
 .rem-when { font-size: 12px; font-weight: 800; color: #475569; white-space: nowrap; }
+.rem-date { font-size: 10.5px; color: #94A3B8; white-space: nowrap; letter-spacing: .01em; }
 .rem-when.today { color: #0EA5E9; }
 .rem-empty { font-size: 12.5px; color: #94A3B8; padding: 16px 6px; text-align: center; }
 .rem-legend { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #94A3B8; margin-top: 8px; }
@@ -1094,7 +1096,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=441"></script>
+<script src="/tree_client.js?v=442"></script>
 </body>
 </html>`;
 }

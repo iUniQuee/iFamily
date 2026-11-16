@@ -3044,8 +3044,14 @@ function genitiveName(name) {
               ? it.age + ' нас ' + (tb === 'past' ? 'хүрсэн' : 'хүрнэ') : 'Төрсөн өдөр') + '</div>'
           : '<div class="rem-nm">' + escapeHtml(it.name) + '</div><div class="rem-sub">Нийтээр амардаг баяр</div>';
         const when = tb === 'past' ? agoText(it.days) : (it.days === 0 ? 'Өнөөдөр' : it.days + ' хоног');
+        // Тодорхой огноо — тоолуурын доор жижиг саарал бичгээр («11-р сарын 17»)
+        const dt = new Date();
+        dt.setHours(12, 0, 0, 0);
+        dt.setDate(dt.getDate() + (it.days || 0));
+        const dateTxt = dt.getMonth() + 1 + '-р сарын ' + dt.getDate();
         return '<div class="rem-row">' + av + '<div class="rem-mid">' + mid + '</div>' +
-          '<div class="rem-when' + (it.days === 0 ? ' today' : '') + '">' + when + '</div></div>';
+          '<div class="rem-right"><div class="rem-when' + (it.days === 0 ? ' today' : '') + '">' + when +
+          '</div><div class="rem-date">' + dateTxt + '</div></div></div>';
       }).join('') ||
         '<div class="rem-empty">' + (tb === 'past'
           ? 'Сүүлийн жилд болж өнгөрсөн тэмдэглэлт өдөр олдохгүй байна.'
