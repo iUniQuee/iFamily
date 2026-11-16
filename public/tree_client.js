@@ -2584,9 +2584,35 @@ function genitiveName(name) {
   };
 
   // ---------- сануулга ----------
+  // Бүх төхөөрөмж дээр мэдэгдэл асаах төлөв (iPhone/Android/таблет/PC)
+  async function pushDeviceState() {
+    let sub = null;
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) sub = await reg.pushManager.getSubscription();
+      }
+    } catch (e) { sub = null; }
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const standalone = (window.navigator.standalone === true) ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    return { on: perm === 'granted' && !!sub, perm, isIOS, standalone };
+  }
+  window.__bdayPush = async () => {
+    try {
+      await window.__pushOn();
+    } finally {
+      // Төлөвийг дахин зурна (ассан бол «Мэдэгдэл идэвхтэй ✅»)
+      if (typeof window.__reminders === 'function') window.__reminders(window.__remPage || 1);
+    }
+  };
   window.__reminders = async (page) => {
     try {
+      window.__remPage = page || 1;
       const j = await getJson('/api/reminders?page=' + (page || 1));
+      const ps = await pushDeviceState();
       const rows = j.items.map(it => {
         const icon = it.kind === 'h' ? (it.icon || '🇲🇳') : '🎂';
         // Төрсөн өдрийн хүнийг ААВЫН НЭРЭЭР (эцгийн нэр) харуулна — ургийн овог биш.
@@ -2603,7 +2629,20 @@ function genitiveName(name) {
         '<div class="pager"><button ' + (j.page <= 1 ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page - 1) + ')">← Өмнөх</button>' +
         '<span>' + j.page + ' / ' + j.pages + '</span>' +
         '<button ' + (j.page >= j.pages ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page + 1) + ')">Дараагийн →</button></div>' +
-        '<div style="font-size:11px;color:var(--muted);margin-top:6px">🇲🇳 — Бүх нийтээр амарч тэмдэглэдэг баярууд · 🎂 — Төрсөн өдөр. Нас барсан болон «зөвхөн төрсөн он» жагсаалтад орохгүй.</div>');
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">🇲🇳 — Бүх нийтээр амарч тэмдэглэдэг баярууд · 🎂 — Төрсөн өдөр. Насбарсан болон «зөвхөн төрсөн он» жагсаалтад орохгүй.</div>' +
+        (!ps.on && ps.isIOS && !ps.standalone
+          ? '<div style="font-size:11.5px;color:#a8691b;background:rgba(224,164,88,.14);border:1px solid rgba(224,164,88,.4);border-radius:10px;padding:7px 9px;margin-top:8px">📱 iPhone дээр мэдэгдэл авахын тулд Safari-аас <b>«Нүүр дэлгэцэд нэмэх»</b> хийсэн апп дотор нээнэ үү — энгийн таб дээр ирэхгүй.</div>'
+          : ''),
+        // Доод хэсэг: зүүн талд «Мэдэгдэл асаах» (ассан бол «идэвхтэй»), баруун талд «Цуцлах»
+        '<div style="display:flex;align-items:center;gap:8px;width:100%">' +
+          '<button id="bdayPushBtn" onclick="window.__bdayPush()" style="font-size:13.5px;' +
+            (ps.on ? 'background:rgba(47,174,106,.16);border-color:rgba(47,174,106,.5);color:inherit' : '') + '">' +
+            (ps.on ? '✅ Мэдэгдэл идэвхтэй' : '🔔 Мэдэгдэл асаах') +
+          '</button>' +
+          (ps.on ? '' : '<span style="font-size:11px;color:var(--muted)">Төрсөн өдөр, баярын өдрүүдэд мэдэгдэнэ</span>') +
+          '<span style="flex:1"></span>' +
+          '<button onclick="window.__closeModal()">Цуцлах</button>' +
+        '</div>');
     } catch (e) { toast(e.message); }
   };
 

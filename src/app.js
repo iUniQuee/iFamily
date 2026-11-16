@@ -1981,7 +1981,7 @@ async function api(req, env, url, path) {
 
   // --- 🎂 Төрсөн өдрийн мэдэгдэл: апп нээгдэхэд нэг удаа шалгуулна ---
   if (path === '/api/birthday/notify' && method === 'POST') {
-    const r = await sendBirthdayPush(env);
+    const r = await sendDailyPush(env);
     return json({ ok: true, ...r });
   }
   // --- Web Push: төлөв ба туршилт (админ өөрөө шалгах) ---
@@ -2477,52 +2477,71 @@ async function api(req, env, url, path) {
   throw httpErr(404, 'Маршрут олдохгүй');
 }
 
-// ---------- 🎂 Төрсөн өдрийн мэдэгдэл (Web Push) ----------
-// Өдөрт НЭГ удаа, өглөө 09:00 (Улаанбаатар, UTC+8) — тухайн хүний төрсөн
-// өдөр хамааралтай хүмүүсийн утас руу «Аавынхан» нэртэй мэдэгдэл илгээнэ.
-const BDAY_TITLE = 'Аавынхан';
-export async function sendBirthdayPush(env) {
+// ---------- 🎂 Төрсөн өдөр ба баярын мэдэгдэл (Web Push) ----------
+// Өдөрт НЭГ удаа, Улаанбаатарын 09:00-с хойш: тухайн өдрийн төрсөн өдөр ба
+// улсын/билгийн баярыг БҮРТГҮҮЛСЭН БҮХ төхөөрөмж рүү илгээнэ.
+// (Админ мэдэгдэл — notifyAdmins — энэ функцээс хамааралгүй, хэвээр ажиллана.)
+const DAILY_PUSH_TITLE = 'iFamily · Сануулга';
+export async function sendDailyPush(env) {
   try {
-    const ubNow = new Date(Date.now() + 8 * 3600 * 1000);   // УБ цаг
+    const ubNow = new Date(Date.now() + 8 * 3600 * 1000);   // УБ цаг (UTC+8)
     const todayKey = ubNow.toISOString().slice(0, 10);
     const mmdd = todayKey.slice(5, 10);
     if (ubNow.getUTCHours() < 9) return { sent: 0, skipped: 'too-early' };
-    const done = await get(env, "SELECT value FROM design WHERE key='bday_push_date'");
+    const done = await get(env, "SELECT value FROM design WHERE key='daily_push_date'");
     if (done && done.value === todayKey) return { sent: 0, skipped: 'already-sent' };
+
+    // ① Төрсөн өдөр (нас барсан болон огноогүй хүн орохгүй)
     const bdays = await all(env,
       "SELECT id, name, birth_date FROM members WHERE alive=1 AND birth_date LIKE ?", '%-' + mmdd);
-    if (!bdays.length) return { sent: 0, skipped: 'no-birthday' };
-    // Хамааралтай хүмүүс — цусан холбоогоор хоёр тийшээ
-    const children = await all(env, 'SELECT father_id, mother_id, child_id FROM children');
-    const rel = buildRelations(children, []);
-    const related = new Set();
-    const q = bdays.map(b => b.id);
-    for (const id of q) related.add(id);
-    while (q.length) {
-      const id = q.pop();
-      for (const p2 of rel.par.get(id) || []) if (p2 != null && !related.has(p2)) { related.add(p2); q.push(p2); }
-      for (const k2 of rel.kids.get(id) || []) if (k2 != null && !related.has(k2)) { related.add(k2); q.push(k2); }
+    // Аавын нэр (эцгийн нэр) — «Ганбаатрын Билгүүдэй» гэж хэлбэрт оруулна
+    let pat = new Map();
+    if (bdays.length) {
+      try {
+        const fam = await all(env, `SELECT c.child_id, f.name AS fname, f.sex AS fsex
+          FROM children c JOIN members f ON f.id = c.father_id WHERE c.father_id IS NOT NULL ORDER BY c.id`);
+        const byChild = new Map();
+        for (const r of fam) if (!byChild.has(r.child_id)) byChild.set(r.child_id, r.fname);
+        pat = new Map(bdays.map(b => [b.id, byChild.get(b.id) || '']));
+      } catch (e) { pat = new Map(); }
     }
+    const fullName = (b) => {
+      const d = pat.get(b.id);
+      return d ? genitiveName(d) + ' ' + b.name : b.name;
+    };
+
+    // ② Өнөөдрийн баяр (тогтмол MM-DD + билгийн тоолол)
+    const holidays = [];
+    for (const h of HOLIDAYS) if (h.md === mmdd) holidays.push({ name: h.name, icon: h.icon || '🇲🇳' });
+    for (const e of (LUNAR_EVENTS[ubNow.getUTCFullYear()] || [])) {
+      if (e.d === todayKey) holidays.push({ name: e.n, icon: '🇲🇳' });
+    }
+
+    const msgs = [];
+    if (bdays.length === 1) {
+      msgs.push({ title: '🎂 Төрсөн өдөр', body: `Өнөөдөр ${fullName(bdays[0])}-н төрсөн өдөр! 🎂`, url: '/', tag: 'bday' });
+    } else if (bdays.length > 1) {
+      msgs.push({ title: '🎂 Төрсөн өдөр', body: `Өнөөдөр ${bdays.length} хүний төрсөн өдөр: ${bdays.map(fullName).join(', ')} 🎂`, url: '/', tag: 'bday' });
+    }
+    for (const h of holidays) {
+      msgs.push({ title: DAILY_PUSH_TITLE, body: `Өнөөдөр ${h.name}! ${h.icon}`, url: '/', tag: 'holiday' });
+    }
+
+    // Бүртгүүлсэн БҮХ төхөөрөмж (админ төдийгүй)
     let subs = [];
-    try {
-      subs = await all(env, `SELECT s.id, s.endpoint, s.p256dh, s.auth, u.member_id
-        FROM push_subs s JOIN users u ON u.id = s.user_id`);
-    } catch (e) { subs = []; }
-    const names = bdays.map(b => b.name).join(', ');
-    const body = bdays.length === 1
-      ? `Өнөөдөр ${names}-ийн төрсөн өдөр 🎂`
-      : `Өнөөдөр төрсөн өдөр: ${names} 🎂`;
+    try { subs = await all(env, 'SELECT id, endpoint, p256dh, auth FROM push_subs'); } catch (e) { subs = []; }
     let sent = 0;
     for (const s of subs) {
-      if (s.member_id != null && !related.has(Number(s.member_id))) continue;
-      try {
-        const r = await sendPush(env, s, { title: BDAY_TITLE, body, url: '/', tag: 'bday' });
-        if (r.ok) sent++;
-        else if (r.gone) await run(env, 'DELETE FROM push_subs WHERE id=?', s.id);
-      } catch (e) { /* нэг төхөөрөмж эвдэрсэн ч бусдад саад болохгүй */ }
+      for (const m of msgs) {
+        try {
+          const r = await sendPush(env, s, m);
+          if (r.ok) sent++;
+          else if (r.gone) { await run(env, 'DELETE FROM push_subs WHERE id=?', s.id); break; }
+        } catch (e) { /* нэг төхөөрөмж эвдэрсэн ч бусдад саад болохгүй */ }
+      }
     }
-    await run(env, "INSERT INTO design(key,value) VALUES('bday_push_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", todayKey);
-    return { sent, birthdays: bdays.length };
+    await run(env, "INSERT INTO design(key,value) VALUES('daily_push_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", todayKey);
+    return { sent, birthdays: bdays.length, holidays: holidays.length, devices: subs.length };
   } catch (e) {
     return { sent: 0, error: String(e && e.message || e) };
   }
@@ -2531,7 +2550,7 @@ export async function sendBirthdayPush(env) {
 // ---------- өглөөний Telegram сануулга (cron) ----------
 export async function scheduled(env) {
   await initDb(env);
-  try { await sendBirthdayPush(env); } catch (e) { /* push алдаа telegram-д саад болохгүй */ }
+  try { await sendDailyPush(env); } catch (e) { /* push алдаа telegram-д саад болохгүй */ }
   const d = await getDesign(env);
   if (!d.tg_token || !d.tg_chat) return;
   const rows = await all(env, "SELECT name, birth_date FROM members WHERE alive=1 AND birth_date != ''");
