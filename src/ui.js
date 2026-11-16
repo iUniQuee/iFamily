@@ -331,7 +331,7 @@ button.btn-ok:hover { filter: brightness(.9); }
 .link-s.link-sp, .link-c.link-sp { stroke: #8B5CF6; stroke-width: 2.5; }
 .link-s.link-pat, .link-c.link-pat,
 .link-s.link-mat, .link-c.link-mat,
-.link-s.link-uncle, .link-c.link-uncle { stroke: #F43F5E; stroke-width: 2.5; }
+.link-s.link-uncle, .link-c.link-uncle { stroke: #0D9488; stroke-width: 2.5; }
 .link-s.link-hl, .link-c.link-hl { stroke: #10B981; stroke-width: 3; }
 
 /* ---------- КАРТ: бүтэн зурагтай минималист хэв ---------- */
@@ -1096,7 +1096,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=442"></script>
+<script src="/tree_client.js?v=443"></script>
 </body>
 </html>`;
 }

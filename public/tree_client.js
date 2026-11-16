@@ -745,6 +745,7 @@
     const descSet = relSel != null ? descOf(relSel) : null;
     const relUp = (x) => !!ascSet && (x === relSel || ascSet.has(x));
     const relSib = new Set(), relPat = new Set(), relMat = new Set();
+    const relSp = new Set(), relIn = new Set();
     if (relSel != null) {
       const myPars = [...(parOf.get(relSel) || [])];
       for (const p of myPars) {
@@ -760,11 +761,21 @@
           }
         }
       }
+      // Хань ба хадмын тал (эхнэр/нөхрийн эцэг эх, өвөг, ах дүү) — нил ягаан
+      for (const sp of spOf.get(relSel) || []) {
+        relSp.add(sp);
+        for (const p of parOf.get(sp) || []) {
+          relIn.add(p);
+          for (const g of parOf.get(p) || []) relIn.add(g);
+          for (const k of kidsOf.get(p) || []) if (k !== sp) relIn.add(k);
+        }
+      }
     }
     const relClass = (c) => (descSet && descSet.has(c)) ? ' link-kid'
       : relSib.has(c) ? ' link-sib'
       : relPat.has(c) ? ' link-pat'
-      : relMat.has(c) ? ' link-mat' : '';
+      : relMat.has(c) ? ' link-mat'
+      : (relSp.has(c) || relIn.has(c)) ? ' link-sp' : '';
     const hlS = (a, b) => (relUp(a) && relUp(b)) ? ' link-up' : '';
     const hlC = (p, c) => relUp(c) ? ' link-up' : relClass(c);
     const hlStub = (c) => relUp(c) ? ' link-up' : relClass(c);
@@ -791,10 +802,28 @@
     }
     // Хосын тавцан (b) аль хүүхдийг аль хэдийн холбосон бэ — тэдэнд эцэг/эх
     // тус бүрээс ТУСДАА шугам (c) зурахгүй, ингэснээр 2 биш 1 гол шугам гарна.
+    // Хосын ХОЁР гишүүн хоёулаа эцэг/эх болсон ч сервер салбарын жагсаалтад
+    // оруулаагүй (тусдаа `c` ирмэгээр өгсөн) хүүхдийг салбарт нэгтгэнэ —
+    // эс бөгөөс зүрхний доор ХОЁР өөр өнгийн шугмаа зэрэг зургдаж, «давхар
+    // шугам» үүсдэг (жишээ: Намжил & Хулганаа → Эрдэнэчимэг).
+    const mergeKids = new Map();
+    for (const e of es) {
+      if (e.t !== 'b' || !shown.has(e.a) || !shown.has(e.b)) continue;
+      const have = new Set((e.stubs || []).map(st => st.c));
+      const add = [];
+      for (const c of (kidsOf.get(e.a) || [])) {
+        if (have.has(c) || !shown.has(c)) continue;
+        const pars = [...(parOf.get(c) || [])];
+        if (!pars.includes(e.b)) continue;
+        add.push(c);
+      }
+      if (add.length) mergeKids.set(e, add);
+    }
     const busDone = new Set();
     for (const e of es) {
       if (e.t !== 'b' || (!shown.has(e.a) && !shown.has(e.b))) continue;
       for (const st of e.stubs || []) if (shown.has(st.c)) busDone.add(st.c);
+      for (const c of (mergeKids.get(e) || [])) if (shown.has(c)) busDone.add(c);
     }
     for (const e of es) {
       if (e.t === 's') {
@@ -828,8 +857,10 @@
         // зурдаг тул доош буух салаа зүрхний доороос эхэлсэн мэт харагдана.
         {
           const hx = Math.round((sx1 + sx2) / 2), hy = Math.round((sy1 + sy2) / 2);
-          heartOverlay += '<g class="sp-heart"><circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>' +
-            '<text x="' + hx + '" y="' + (hy + 3.5) + '" text-anchor="middle" font-size="11" fill="#94A3B8">&#9829;</text></g>';
+          heartOverlay += '<g class="sp-heart"><circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="' +
+            (isSp ? '#8B5CF6' : '#CBD5E1') + '" stroke-width="' + (isSp ? '1.6' : '1') + '"/>' +
+            '<text x="' + hx + '" y="' + (hy + 3.5) + '" text-anchor="middle" font-size="11" fill="' +
+            (isSp ? '#8B5CF6' : '#94A3B8') + '">&#9829;</text></g>';
         }
       } else if (e.t === 'b') {
         // Хосын салбар: гол шугмаар → хэвтээ тавцан → хүүхэд бүрт салаа.
@@ -838,7 +869,10 @@
         // «холбоогүй» мэт харагддаг байв.
         const pa = shown.has(e.a), pb = shown.has(e.b);
         if (!pa && !pb) continue;
-        const stubs = (e.stubs || []).filter(s => shown.has(s.c));
+        let stubs = (e.stubs || []).filter(s => shown.has(s.c));
+        for (const mc of (mergeKids.get(e) || [])) {
+          if (shown.has(mc)) stubs.push({ c: mc, x: midOf(mc, e.x), y0: e.y1, y1: e.y1 });
+        }
         if (!stubs.length) continue;
         // Шугмыг ХАРАГДАЖ байгаа эцэг/эхийнх нь картын ГОЛООС татна
         const stemX = (pa && pb) ? Math.round((midOf(e.a, e.x) + midOf(e.b, e.x)) / 2)
@@ -855,6 +889,8 @@
         // Авга/нагац (эцэг/эхийн ах дүү) — өөрийн ах дүүгээс ялгаатай өнгө
         const anyUncle = stubs.some(st => relPat.has(st.c) || relMat.has(st.c));
         const anyKid = stubs.some(st => st.c === relSel || (descSet && descSet.has(st.c)));
+        // Хань ба хадмын тал — нил ягаан
+        const anySp = stubs.some(st => relSp.has(st.c) || relIn.has(st.c));
         // АЛТ зөвхөн БҮХ салаа дээшээ үед. Бусад үед дизайны шар-алт
         // (--link2) өнгө огт ашиглахгүй — ах/дүү рүү явсан тавцан/шугмаа
         // шар харагдахаас сэргийлж бүдэг цэнхэр (ах/дүү өнгө) болгоно.
@@ -866,7 +902,8 @@
         const busCls = anyUncle ? ' link-uncle'
           : anySib ? ' link-sib'
             : anyKid ? ' link-kid'
-              : anyUp ? ' link-up' : '';
+              : anySp ? ' link-sp'
+                : anyUp ? ' link-up' : '';
         // ШАР нь ЗӨВХӨН дээшээ үе (эцэг/эх, эмээ/өвөө …). Ах/дүү нь өөрийн
         // хамаарлын өнгөөрөө (бүдэг цэнхэр) хэвээр — тиймээс салаа бүр
         // өөрийн хамаарлаар будагдана (busUp-аар бүх салааг шар болгохгүй).
@@ -930,10 +967,10 @@
           // шугам хүртэл БҮТЭН ШАР замыг давхар зурна. Тавцан ба шугмаа
           // ах/дүүтэй хуваалцдаг тул зөвхөн энэ замын хэсэг шар болно —
           // ах/дүү рүү явсан хэсэг цэнхэр хэвээр үлдэнэ.
-          if (scls.indexOf('link-up') >= 0) {
-            upOverlay += '<path class="link-c link-up" d="M ' + s.x + ' ' + yEnd +
-              ' L ' + s.x + ' ' + bY + ' L ' + stemX + ' ' + bY +
-              ' L ' + stemX + ' ' + stemY0 + '"/>';
+          // Зөвхөн тавцангийн хэвтээ хэсгийг алтаар будна — шугмаа өөрөө
+          // аль хэдийн алт тул босоог дахин зурвал «давхар шугам» болно.
+          if (scls.indexOf('link-up') >= 0 && Math.abs(s.x - stemX) > 1) {
+            upOverlay += '<path class="link-c link-up" d="M ' + s.x + ' ' + bY + ' L ' + stemX + ' ' + bY + '"/>';
           }
         }
         svg += upOverlay;
