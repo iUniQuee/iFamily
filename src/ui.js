@@ -919,31 +919,54 @@ export function loginPage({ theme = 'blue' } = {}) {
 <meta name="apple-mobile-web-app-title" content="iFamily">
 <style>${CSS}
 body { display: flex; align-items: center; justify-content: center; min-height: 100vh;
-  background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 52%, var(--bg3) 100%); }
-.authcard { background: #fff; border: 1px solid #e3e8ef; border-radius: 16px; padding: 26px 24px;
-  width: 410px; max-width: 94vw; box-shadow: 0 10px 30px rgba(20,40,80,.10); }
-.ahead { font-size: 22px; font-weight: 800; color: #1f2d47; }
-.asub { color: #6b7a90; font-size: 13.5px; margin: 6px 0 16px; }
-.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.tab { flex: 1; border: 0; border-radius: 999px; padding: 10px 0; font-size: 14.5px;
-  font-weight: 650; cursor: pointer; background: #dbe7fb; color: #2b5bbf; font-family: inherit; }
-.tab.on { background: #1a73e8; color: #fff; }
-.alab { display: block; font-size: 12.5px; font-weight: 650; color: #44536b; margin: 8px 0 4px; }
-.ainp { width: 100%; padding: 11px 12px; border: 1px solid #dbe3ee; background: #eff4fa;
-  border-radius: 10px; font-size: 14.5px; color: #1f2d47; font-family: inherit; outline: none; }
-.ainp:focus { border-color: #1a73e8; background: #fff; }
-.abtn { width: 100%; margin-top: 16px; padding: 13px; border: 0; border-radius: 12px;
+  background: #F8FAFC; padding: 24px 16px; }
+.authcard { background: #fff; border: 1px solid #EEF2F7; border-radius: 20px; padding: 28px 24px;
+  width: 410px; max-width: 94vw;
+  box-shadow: 0 18px 40px rgba(15,23,42,.10), 0 2px 6px rgba(15,23,42,.04); }
+.ahead { display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 21px; font-weight: 800; color: #0F172A; letter-spacing: -.01em; }
+.aicon { width: 38px; height: 38px; border-radius: 12px; background: #ECFDF5; color: #059669;
+  display: grid; place-items: center; flex: 0 0 38px; }
+.asub { color: #64748B; font-size: 13px; margin: 10px 0 18px; text-align: center; line-height: 1.45; }
+.tabs { display: flex; gap: 4px; background: #F1F5F9; border-radius: 999px; padding: 3px; margin-bottom: 18px; }
+.tab { flex: 1; border: 0; border-radius: 999px; padding: 9px 0; font-size: 14px; font-weight: 700;
+  cursor: pointer; background: transparent; color: #64748B; font-family: inherit; box-shadow: none; }
+.tab.on { background: #FFFFFF; color: #0F172A; box-shadow: 0 1px 3px rgba(15,23,42,.14); }
+.alab { display: block; font-size: 12.5px; font-weight: 650; color: #475569; margin: 10px 0 6px; }
+.fld { position: relative; }
+.fld .fic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: #94A3B8; display: grid; place-items: center; pointer-events: none; }
+.authcard .ainp { width: 100%; padding: 11px 12px 11px 37px; border: 1px solid #E2E8F0; background: #fff;
+  border-radius: 10px; font-size: 14.5px; color: #0F172A; font-family: inherit; outline: none;
+  box-sizing: border-box; }
+.authcard .ainp::placeholder { color: #94A3B8; }
+.authcard .ainp:focus { border-color: #94A3B8; box-shadow: 0 0 0 3px rgba(148,163,184,.15); }
+.authcard .fld.pw .ainp { padding-right: 42px; }
+.feye { position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: transparent;
+  color: #94A3B8; border-radius: 8px; padding: 0; cursor: pointer; }
+.feye:hover { background: #F1F5F9; color: #475569; }
+.feye .i2 { display: none; }
+.feye.on .i1 { display: none; }
+.feye.on .i2 { display: block; }
+/* Хөтчийн autofill-ийн шар дэвсгэрийг дарах — талбар цагаан хэвээр */
+.authcard .ainp:-webkit-autofill, .authcard .ainp:-webkit-autofill:hover, .authcard .ainp:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0F172A;
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+  transition: background-color 99999s ease-out 0s;
+}
+.abtn { width: 100%; margin-top: 18px; padding: 13px; border: 0; border-radius: 12px;
   background: #1a73e8; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .abtn:hover { background: #1665c9; }
-.hint-gray { color: #6b7a90; font-size: 12.5px; margin-top: 12px; text-align: center; }
-.hint-gray b { color: #44536b; }
-.devnote { font-size: 12px; background: #f3f7fd; border: 1px dashed #c3d3ee; border-radius: 8px;
-  padding: 8px 10px; margin-top: 8px; color: #44536b; }
+.hint-gray { color: #64748B; font-size: 12.5px; margin-top: 12px; text-align: center; }
+.hint-gray b { color: #334155; }
+.devnote { font-size: 12px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px;
+  padding: 8px 10px; margin-top: 8px; color: #475569; }
 </style>
 </head>
 <body>
 <div class="authcard">
-  <div class="ahead">🌳 iFamily</div>
+  <div class="ahead"><span class="aicon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></span><span>iFamily</span></div>
   <div class="asub">Ургийн бичгээ хамтран баяжуулах гэр бүлийн апп.</div>
   <div class="tabs">
     <button type="button" id="tabLogin" class="tab on" onclick="showTab('login')">Нэвтрэх</button>
@@ -951,18 +974,32 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
   </div>
   <div id="paneLogin">
     <label class="alab" for="li_phone">Утасны дугаар</label>
-    <input class="ainp" type="tel" id="li_phone" placeholder="88776576" autocomplete="tel"
-      onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="fld">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+      <input class="ainp" type="tel" id="li_phone" placeholder="99110000" autocomplete="tel"
+        onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
     <label class="alab" for="li_pw">Нууц үг</label>
-    <input class="ainp" type="password" id="li_pw" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="fld pw">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="11" width="17" height="10" rx="2"/><path d="M7.5 11V7a4.5 4.5 0 0 1 9 0v4"/></svg></span>
+      <input class="ainp" type="password" id="li_pw" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" class="feye" aria-label="Харуулах" onclick="eyeToggle('li_pw',this)"><svg class="i1" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i2" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.3 17.3 0 0 1-2.15 3.19"/><path d="M6.61 6.61A17.3 17.3 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 4.39-.92"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/></svg></button>
+    </div>
     <div id="otpStep" class="hidden">
       <label class="alab" for="li_code">Нэг удаагийн код</label>
+    <div class="fld">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="11" width="17" height="10" rx="2"/><path d="M7.5 11V7a4.5 4.5 0 0 1 9 0v4"/></svg></span>
       <input class="ainp" type="text" id="li_code" inputmode="numeric" placeholder="6 оронтой код"
         onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
       <label class="alab" for="li_newpw">Шинэ нууц үг</label>
+    <div class="fld pw">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="11" width="17" height="10" rx="2"/><path d="M7.5 11V7a4.5 4.5 0 0 1 9 0v4"/></svg></span>
       <input class="ainp" type="password" id="li_newpw" placeholder="Хамгийн багадаа 4 тэмдэгт"
         onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" class="feye" aria-label="Харуулах" onclick="eyeToggle('li_newpw',this)"><svg class="i1" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i2" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.3 17.3 0 0 1-2.15 3.19"/><path d="M6.61 6.61A17.3 17.3 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 4.39-.92"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/></svg></button>
+    </div>
       <div class="devnote hidden" id="devcode"></div>
     </div>
     <button class="abtn" onclick="doLogin()">Нэвтрэх</button>
@@ -970,21 +1007,43 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
   </div>
   <div id="paneReg" class="hidden">
     <label class="alab" for="rg_phone">Утасны дугаар</label>
-    <input class="ainp" type="tel" id="rg_phone" placeholder="80200030" autocomplete="tel"
+    <div class="fld">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+      <input class="ainp" type="tel" id="rg_phone" placeholder="99110000" autocomplete="tel"
       onkeydown="if(event.key==='Enter')doRegister()">
+          </div>
     <label class="alab" for="rg_name">Нэр</label>
-    <input class="ainp" type="text" id="rg_name" placeholder="Таны нэр"
+    <div class="fld">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+      <input class="ainp" type="text" id="rg_name" placeholder="Таны нэр"
       onkeydown="if(event.key==='Enter')doRegister()">
+          </div>
     <label class="alab" for="rg_pw">Нууц үг</label>
-    <input class="ainp" type="password" id="rg_pw" autocomplete="new-password"
+    <div class="fld pw">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="11" width="17" height="10" rx="2"/><path d="M7.5 11V7a4.5 4.5 0 0 1 9 0v4"/></svg></span>
+      <input class="ainp" type="password" id="rg_pw" autocomplete="new-password"
       onkeydown="if(event.key==='Enter')doRegister()">
+      <button type="button" class="feye" aria-label="Харуулах" onclick="eyeToggle('rg_pw',this)"><svg class="i1" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i2" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.3 17.3 0 0 1-2.15 3.19"/><path d="M6.61 6.61A17.3 17.3 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 4.39-.92"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/></svg></button>
+    </div>
     <label class="alab" for="rg_pw2">Нууц үг давтах</label>
-    <input class="ainp" type="password" id="rg_pw2" autocomplete="new-password"
+    <div class="fld pw">
+      <span class="fic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="11" width="17" height="10" rx="2"/><path d="M7.5 11V7a4.5 4.5 0 0 1 9 0v4"/></svg></span>
+      <input class="ainp" type="password" id="rg_pw2" autocomplete="new-password"
       onkeydown="if(event.key==='Enter')doRegister()">
+      <button type="button" class="feye" aria-label="Харуулах" onclick="eyeToggle('rg_pw2',this)"><svg class="i1" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i2" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.3 17.3 0 0 1-2.15 3.19"/><path d="M6.61 6.61A17.3 17.3 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 4.39-.92"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/></svg></button>
+    </div>
     <button class="abtn" onclick="doRegister()">Бүртгүүлэх</button>
   </div>
 </div>
 <script>${bootScript}
+function eyeToggle(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.classList.toggle('on', show);
+  btn.setAttribute('aria-label', show ? 'Нуух' : 'Харуулах');
+}
 function showTab(t) {
   const L = t === 'login';
   tabLogin.classList.toggle('on', L);
@@ -1096,7 +1155,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=443"></script>
+<script src="/tree_client.js?v=445"></script>
 </body>
 </html>`;
 }
