@@ -287,7 +287,7 @@
         if (p === 'F,M') return 'Эмээ';
         if (p === 'M,F') return 'Нагац өвөө';
         if (p === 'M,M') return 'Нагац эмээ';
-        if (p === 'C,C') return mid.sex === 'm' ? 'Ач' : mid.sex === 'f' ? 'Зээ' : 'Ач/Зээ';
+        if (p === 'C,C') return (mid.sex === 'm' ? 'Ач ' : mid.sex === 'f' ? 'Зээ ' : 'Ач/Зээ ') + (isF ? 'охин' : 'хүү');
         if (p === 'F,C' || p === 'M,C') return sib(); // ах/эгч/дүү (төрсөн онгоор эрэмбэ)
         if (p === 'S,F') return 'Хадам аав';
         if (p === 'S,M') return 'Хадам ээж';
@@ -316,7 +316,11 @@
           if (mid.sex === 'f') return older === null ? 'Эгч/Дүүгийн нөхөр' : (older ? 'Эгчийн нөхөр' : 'Дүүгийн нөхөр');
           return 'Ах/дүүгийн хань';
         }
-        if (p === 'C,C,C') return mid.sex === 'm' ? 'Ачийн хүүхэд' : mid.sex === 'f' ? 'Зээгийн хүүхэд' : 'Ач/Зээгийн хүүхэд';
+        if (p === 'C,C,C') {
+          const gc = byId.get(ids[n - 1]) || {};
+          const side = mid.sex === 'm' ? 'Ач' : mid.sex === 'f' ? 'Зээ' : 'Ач/Зээ';
+          return side + ' ' + (gc.sex === 'f' ? 'охины' : 'хүүгийн') + ' хүүхэд';
+        }
         // Дээд үе: элэнц өвөө/эмээ (эхийн тал бол «Нагац элэнц …»)
         if (/^[FM],[FM],[FM]$/.test(p)) {
           return cap1((path[0] === 'M' ? 'Нагац ' : '') + (path[2] === 'F' ? 'элэнц өвөө' : 'элэнц эмээ'));
@@ -334,6 +338,7 @@
       if (/ах$/i.test(w)) return w + 'ын';
       if (/дүү$/i.test(w)) return w + 'гийн';
       if (/охин$/i.test(w)) return w + 'ы';
+      if (/хүүхэд$/i.test(w)) return w.replace(/эд$/i, 'дийн'); // хүүхэд → хүүхдийн
       if (/хүү$/i.test(w)) return w + 'гийн';
       return w + 'ийн';
     };
@@ -355,7 +360,8 @@
       if (path[n - 1] === 'S') {
         const base = nameOf(ids.slice(0, n), path.slice(0, n - 1));
         const bm = byId.get(ids[n - 1]) || {};
-        if (/Үеэл/.test(base)) return 'Үеэл ' + (bm.sex === 'f' ? 'хүргэн' : 'бэр');
+        // Хүйсийг заавал шалгана: эмэгтэй үеэлийн нөхөр → хүргэн, эрэгтэй үеэлийн эхнэр → бэргэн
+        if (/Үеэл/.test(base)) return 'Үеэл ' + (bm.sex === 'f' ? 'хүргэн' : 'бэргэн');
         return genitiveOf(base) + (bm.sex === 'f' ? ' нөхөр' : ' эхнэр');
       }
       const up = path.filter(x => x === 'F' || x === 'M').length;
@@ -685,13 +691,7 @@
 
     const me = (S.viewer && S.viewer.member_id === m.id);
     const defLabel = me ? 'Энэ би' : (m.sex === 'f' ? 'Охин' : 'Хүү');
-    let pill = (vRel && vRel.get(m.id)) || (vRel ? 'Хамаатан' : defLabel);
-    // Сонгосон хүний карт дээр «Энэ хүн» гэж бичихгүй — өөрт нь харьцуулсан
-    // нэрээр (жишээ: «Ах») үлдээнэ. Бусад карт сонгосон хүнээс тооцогдоно.
-    if (pill === 'Энэ хүн' || pill === 'Би' && !me) {
-      const vr = viewerLabels();
-      if (vr && vr.get(m.id)) pill = vr.get(m.id);
-    }
+    const pill = (vRel && vRel.get(m.id)) || (vRel ? 'Хамаатан' : defLabel);
     // Нас барсан гишүүний карт дээр жижиг саарал «†» тэмдэг
     const deadMark = isDead
       ? '<span class="dead-mark" title="Нас барсан">†</span>' : '';
@@ -709,10 +709,10 @@
     curRel = (selected != null && byId.has(selected)) ? relLabels(selected) : null;
     curAsc = (selected != null && byId.has(selected)) ? ascOf(selected) : null;
     curDesc = (selected != null && byId.has(selected)) ? descOf(selected) : null;
-    // Сонгосон (тодорсон) хүн байвал ТЭР хүнээс эхлэн хамаатны нэрийг тооцно,
-    // эс бөгөөс нэвтэрсэн хэрэглэгч төвтэй хэвээр.
-    const centerId = (selected != null && byId.has(selected))
-      ? selected : (S.viewer && S.viewer.member_id);
+    // Карт дээрх хамаатны нэр нь ҮРГЭЛЖ нэвтэрсэн хэрэглэгчээс тооцогдоно —
+    // аль ч карт дээр дарахад нэр нь өөрчлөгдөхгүй. Харин дэлгэрэнгүй цонхны
+    // Эцэг/Эх, Ах/Дүү, Хань, Хүүхэд чипүүд нь тухайн нээсэн хүнээс тооцогдоно.
+    const centerId = (S.viewer && S.viewer.member_id) || null;
     vRel = labelsFrom(centerId);
     curBlood = (focus != null) ? bloodNear(focus) : null;
     // Хамаарлын өнгө — сонгосон хүн (эсвэл нэвтэрсэн хэрэглэгч) төвтэй:
