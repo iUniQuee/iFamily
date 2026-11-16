@@ -3685,53 +3685,98 @@ function genitiveName(name) {
   };
 
   // --- хувийн профайл ---
+  // Lucide дүрснүүд (emoji-гийн оронд — vector, currentColor)
+  const PF_IC = {
+    phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    smartphone: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+    bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.3 17.3 0 0 1-2.15 3.19"/><path d="M6.61 6.61A17.3 17.3 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 4.39-.92"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/>',
+    lock: '<rect x="3.5" y="11" width="17" height="10" rx="2"/><path d="M7.5 11V7a4.5 4.5 0 0 1 9 0v4"/>'
+  };
+  const pfIc = (n, sz) => '<svg class="pf-ic" viewBox="0 0 24 24" width="' + (sz || 16) + '" height="' + (sz || 16) +
+    '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + PF_IC[n] + '</svg>';
+  // Нууц үгийн «нүд» — харах/нуух
+  window.__pfEye = (id, btn) => {
+    const el = $(id); if (!el) return;
+    const show = el.type === 'password';
+    el.type = show ? 'text' : 'password';
+    if (btn) btn.innerHTML = pfIc(show ? 'eyeOff' : 'eye', 17);
+    if (btn) btn.setAttribute('aria-label', show ? 'Нуух' : 'Харуулах');
+  };
   window.__profile = async () => {
     try {
       const me = await getJson('/api/me');
-      // Холбодсон картын нэрийг аавын нэрээр бүтнээр харуулна:
-      // «Баярсайханы Дөлгөөн»
+      const ps = await pushDeviceState();
+      // Холбодсон картын нэрийг аавын нэрээр бүтнээр харуулна: «Баярсайханы Дөлгөөн»
       const linkedName = me.member_name || '';
       const linkedPat = (me.member_id && linkedName) ? patronymicOf(me.member_id) : '';
       const linkedFull = linkedName ? (linkedPat ? linkedPat + ' ' + linkedName : linkedName) : '';
-      const linked = linkedFull
-        ? '<b style="color:#2fae6a">' + escapeHtml(linkedFull) + '</b>'
-        : '<span style="opacity:.6">—</span>';
-      const pend = me.pending
-        ? '⏳ «' + escapeHtml(me.pending.card_name || ('#' + me.pending.member_id)) + '» — админ зөвшөөрөхийг хүлээж байна'
-        : (me.member_name ? '<b style="color:#2fae6a">✓ холбогдсон</b>' : '<span style="opacity:.6">хүсэлт байхгүй</span>');
-      let h = '<div class="kv"><b>Нэр:</b> ' + escapeHtml(me.name || '—') + '</div>' +
-        '<div class="kv"><b>Утас:</b> ' + escapeHtml(me.phone || '—') + '</div>' +
-        '<div class="kv"><b>Эрх:</b> ' + escapeHtml(roleName(me.role)) + '</div>' +
-        '<div class="kv"><b>Холбодсон карт:</b> ' + linked + '</div>' +
-        '<div class="kv"><b>Хүсэлт:</b> ' + pend + '</div>';
-      h += '<label class="f" style="margin-top:14px">Өөрийн ургийн карттай холбох</label>';
-      h += me.member_name
-        ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Таны бүртгэл «' + escapeHtml(linkedFull) + '» карттай холбогдсон байна.</div>'
-        : '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Мод дээрх өөрийн нэрээ сонгоод хүсэлт илгээнэ үү. <b>Админ зөвшөөрсний дараа</b> л карттай холбогдоно.</div>' +
-          '<button class="primary" style="width:100%" onclick="window.__profileLink()">📇 Карт холбох хүсэлт илгээх</button>';
-      h += '<label class="f" style="margin-top:14px">Нууц үг солих</label>';
-      if (me.has_password) h += '<input type="password" id="pf_old" placeholder="Хуучин нууц үг" autocomplete="current-password">';
-      h += '<input type="password" id="pf_new" placeholder="Шинэ нууц үг (4+ тэмдэгт)" autocomplete="new-password">' +
-        '<button style="width:100%" onclick="window.__pfSave()">Нууц үг хадгалах</button>';
-      h += '<label class="f" style="margin-top:14px">📲 Дэлгэцэнд нэмэх (PWA)</label>';
+      const role = roleName(me.role);
+      const isSuper = me.role === 'super' || /супер/i.test(role);
+      // ── Профайлын хураангуй карт ──
+      const initial = escapeHtml(((me.name || '?').trim().charAt(0) || '?').toUpperCase());
+      const ava = me.member_id
+        ? '<span class="pf-av"><span class="pf-av-i">' + initial + '</span>' +
+          '<img src="/api/members/' + me.member_id + '/photo" alt="" onerror="this.remove()"></span>'
+        : '<span class="pf-av"><span class="pf-av-i">' + initial + '</span></span>';
+      let badges = '';
+      if (isSuper || me.role === 'admin') {
+        badges += '<span class="pf-badge role">' + pfIc('shield', 12) + escapeHtml(role) + '</span>';
+      }
+      if (linkedFull) {
+        badges += '<span class="pf-badge ok">' + pfIc('check', 12) +
+          'Холбогдсон: ' + escapeHtml(linkedFull) + '</span>';
+      } else if (me.pending) {
+        badges += '<span class="pf-badge wait">' + pfIc('link', 12) + 'Хүлээж байна: ' +
+          escapeHtml(me.pending.card_name || ('#' + me.pending.member_id)) + '</span>';
+      } else {
+        badges += '<span class="pf-badge off">' + pfIc('link', 12) + 'Карт холбогдоогүй</span>';
+      }
+      let h = '<div class="pf-card">' + ava + '<div class="pf-info">' +
+        '<div class="pf-name">' + escapeHtml(me.name || '—') + '</div>' +
+        '<div class="pf-phone">' + pfIc('phone', 13) + '<span>' + escapeHtml(me.phone || '—') + '</span></div>' +
+        '<div class="pf-badges">' + badges + '</div></div></div>';
+      // ── Карт холбох (холбогдоогүй бол) ──
+      if (!linkedFull) {
+        h += '<div class="pf-row"><span class="pf-row-ic">' + pfIc('link', 17) + '</span>' +
+          '<div class="pf-row-t"><b>Ургийн карттай холбох</b><span>' +
+          (me.pending ? 'Хүсэлт админ зөвшөөрөхийг хүлээж байна.' : 'Мод дээрх өөрийн нэрээ сонгоод хүсэлт илгээнэ үү.') +
+          '</span></div><button class="pf-btn sm" onclick="window.__profileLink()">Хүсэлт</button></div>';
+      }
+      // ── Нууц үг солих ──
+      h += '<div class="pf-h">Нууц үг солих</div><div class="pf-group">';
+      if (me.has_password) {
+        h += '<div class="pf-field"><input type="password" id="pf_old" placeholder="Хуучин нууц үг" autocomplete="current-password">' +
+          '<button type="button" class="pf-eye" aria-label="Харуулах" onclick="window.__pfEye(\'pf_old\',this)">' + pfIc('eye', 17) + '</button></div>';
+      }
+      h += '<div class="pf-field"><input type="password" id="pf_new" placeholder="Шинэ нууц үг (4+ тэмдэгт)" autocomplete="new-password">' +
+        '<button type="button" class="pf-eye" aria-label="Харуулах" onclick="window.__pfEye(\'pf_new\',this)">' + pfIc('eye', 17) + '</button></div>' +
+        '<button class="pf-btn primary" onclick="window.__pfSave()">' + pfIc('lock', 15) + 'Нууц үг хадгалах</button></div>';
+      // ── PWA ──
       const pwaOn = window.__pwaInstalled();
       const pwaReady = !!window.__pwaPrompt;
-      if (pwaOn) {
-        h += '<div style="font-size:12.5px;color:#2fae6a;font-weight:600">✓ Апп утасны дэлгэцэнд нэмэгдсэн байна</div>';
-      } else {
-        h += '<button class="primary" style="width:100%" onclick="window.__installPWA()">📲 Шууд суулгах</button>';
-        h += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">' +
-          (pwaReady
-            ? 'Товч дарахад суулгах цонх шууд гарна — «Суулгах»-ыг сонгоход л апп дэлгэцэнд нэмэгдэнэ.'
-            : 'Хэрэв цонх гарахгүй бол: <b>Android Chrome</b> ⋮ цэс → «Апп суулгах», <b>iPhone Safari</b> ⬆ → «Дэлгэцэнд нэмэх».') +
-          '</div>';
-      }
-      h += '<label class="f" style="margin-top:14px">🔔 Төрсөн өдрийн мэдэгдэл</label>';
-      h += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:6px">' +
-        'Хамааралтай хүний төрсөн өдөр өглөө 09:00-д «Аавынхан» нэртэй мэдэгдэл ирнэ.' +
-        '</div>' +
-        '<button class="primary" style="width:100%" onclick="window.__pushOn()">🔔 Мэдэгдэл асаах</button>';
-      openModal('👤 Миний профайл', h, '<button onclick="window.__closeModal()">Хаах</button>');
+      h += '<div class="pf-h">Апп ба мэдэгдэл</div>';
+      h += '<div class="pf-row"><span class="pf-row-ic">' + pfIc('smartphone', 17) + '</span>' +
+        '<div class="pf-row-t"><b>Дэлгэцэнд нэмэх (PWA)</b><span>' +
+        (pwaOn ? 'Апп утасны дэлгэцэнд нэмэгдсэн байна.'
+          : (pwaReady ? '«Суулгах» дарж дэлгэцэнд нэмнэ.'
+            : 'Chrome ⋮ цэс → «Апп суулгах», Safari ⬆ → «Дэлгэцэнд нэмэх».')) +
+        '</span></div>' +
+        (pwaOn
+          ? '<span class="pf-done">' + pfIc('check', 15) + '</span>'
+          : '<button class="pf-btn sm" onclick="window.__installPWA()">Суулгах</button>') + '</div>';
+      // ── Мэдэгдэл ──
+      h += '<div class="pf-row"><span class="pf-row-ic">' + pfIc('bell', 17) + '</span>' +
+        '<div class="pf-row-t"><b>Төрсөн өдрийн мэдэгдэл</b><span>' +
+        (ps.on ? 'Асаалттай — өглөө 09:00-д мэдэгдэнэ.' : 'Төрсөн өдөр, баярын өдрүүдэд мэдэгдэнэ (өглөө 09:00).') +
+        '</span></div>' +
+        '<button class="sw' + (ps.on ? ' on' : '') + '" id="pfSw" aria-pressed="' + (ps.on ? 'true' : 'false') +
+        '" onclick="window.__bdayPush()"><i></i></button></div>';
+      openModal('Миний профайл', h, '<button onclick="window.__closeModal()">Хаах</button>', 'pf-modal');
     } catch (e) { toast(e.message); }
   };
   window.__profileLink = () => { window.__closeModal(); window.__linkReq(); };

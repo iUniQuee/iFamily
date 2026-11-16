@@ -504,6 +504,71 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 .sw.on { background: #10B981; }
 .sw.on i { left: 21px; }
 
+/* ---------- МИНИЙ ПРОФАЙЛ ---------- */
+.modal.pf-modal { width: min(470px, 96vw); }
+.pf-card {
+  display: flex; gap: 14px; align-items: center;
+  background: #F8FAFC; border: 1px solid #EEF2F7; border-radius: 16px; padding: 14px;
+}
+.pf-av {
+  position: relative; flex: 0 0 56px; width: 56px; height: 56px; border-radius: 50%;
+  overflow: hidden; background: #E2E8F0; display: grid; place-items: center;
+}
+.pf-av-i { font-size: 20px; font-weight: 800; color: #64748B; }
+.pf-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.pf-info { min-width: 0; flex: 1; }
+.pf-name { font-size: 16px; font-weight: 800; color: #0F172A; line-height: 1.2; }
+.pf-phone { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: #64748B; margin-top: 3px; }
+.pf-phone .pf-ic { color: #94A3B8; display: block; }
+.pf-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pf-badge {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+  border-radius: 999px; padding: 3px 8px; border: 1px solid transparent; line-height: 1.35;
+}
+.pf-badge .pf-ic { display: block; }
+.pf-badge.role { background: #EEF2FF; color: #4338CA; border-color: #C7D2FE; }
+.pf-badge.ok { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+.pf-badge.wait { background: #FFF7ED; color: #B45309; border-color: #FED7AA; }
+.pf-badge.off { background: #F1F5F9; color: #64748B; border-color: #E2E8F0; }
+.pf-h {
+  font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: #94A3B8; margin: 16px 0 8px;
+}
+.pf-group { display: flex; flex-direction: column; gap: 8px; }
+.pf-field { position: relative; }
+.pf-field input {
+  width: 100%; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+  padding: 9px 40px 9px 12px; font-size: 13.5px; color: #0F172A; box-sizing: border-box;
+}
+.pf-field input:focus { outline: none; border-color: #CBD5E1; box-shadow: 0 0 0 3px rgba(148,163,184,.15); }
+.pf-eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; display: grid; place-items: center; border: 0;
+  background: transparent; color: #94A3B8; border-radius: 8px; padding: 0;
+}
+.pf-eye:hover { background: #F1F5F9; color: #475569; }
+.pf-btn {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; width: auto;
+  border: 1px solid #E2E8F0; background: #FFFFFF; color: #0F172A; border-radius: 10px;
+  padding: 8px 14px; font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+.pf-btn:hover { background: #F8FAFC; }
+.pf-btn.primary { background: #0F172A; border-color: #0F172A; color: #FFFFFF; }
+.pf-btn.primary:hover { background: #1E293B; color: #FFFFFF; }
+.pf-btn.sm { padding: 6px 12px; font-size: 12.5px; }
+.pf-row {
+  display: flex; align-items: center; gap: 10px; border: 1px solid #E2E8F0;
+  border-radius: 12px; padding: 10px 12px; background: #FFFFFF; margin-bottom: 8px;
+}
+.pf-row-ic {
+  flex: 0 0 32px; width: 32px; height: 32px; border-radius: 9px;
+  background: #F1F5F9; color: #475569; display: grid; place-items: center;
+}
+.pf-row-t { flex: 1; min-width: 0; }
+.pf-row-t b { display: block; font-size: 13px; color: #0F172A; }
+.pf-row-t span { display: block; font-size: 11.5px; color: #94A3B8; line-height: 1.35; margin-top: 2px; }
+.pf-done { flex: 0 0 24px; width: 24px; display: grid; place-items: center; color: #10B981; }
+
 /* ---------- Апп нээгдэх үеийн splash (PWA лого) ---------- */
 #splash {
   position: fixed; inset: 0; z-index: 9999;
@@ -992,7 +1057,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=437"></script>
+<script src="/tree_client.js?v=438"></script>
 </body>
 </html>`;
 }
