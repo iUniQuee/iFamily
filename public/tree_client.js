@@ -685,7 +685,13 @@
 
     const me = (S.viewer && S.viewer.member_id === m.id);
     const defLabel = me ? 'Энэ би' : (m.sex === 'f' ? 'Охин' : 'Хүү');
-    const pill = (vRel && vRel.get(m.id)) || (vRel ? 'Хамаатан' : defLabel);
+    let pill = (vRel && vRel.get(m.id)) || (vRel ? 'Хамаатан' : defLabel);
+    // Сонгосон хүний карт дээр «Энэ хүн» гэж бичихгүй — өөрт нь харьцуулсан
+    // нэрээр (жишээ: «Ах») үлдээнэ. Бусад карт сонгосон хүнээс тооцогдоно.
+    if (pill === 'Энэ хүн' || pill === 'Би' && !me) {
+      const vr = viewerLabels();
+      if (vr && vr.get(m.id)) pill = vr.get(m.id);
+    }
     // Нас барсан гишүүний карт дээр жижиг саарал «†» тэмдэг
     const deadMark = isDead
       ? '<span class="dead-mark" title="Нас барсан">†</span>' : '';
