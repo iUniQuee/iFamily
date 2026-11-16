@@ -406,6 +406,40 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 .acts button:hover { background: #F1F5F9; color: #0F172A; border-color: transparent; }
 .sp-heart text { font-family: inherit; }
 
+/* ---------- ЗУРАГ ТААРУУЛАХ (cropper) ---------- */
+.crop-wrap {
+  position: fixed; inset: 0; z-index: 300; background: rgba(15,23,42,.55);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.crop-panel {
+  background: #FFFFFF; border-radius: 16px; width: 400px; max-width: 96vw;
+  box-shadow: 0 18px 50px rgba(15,23,42,.35); padding: 14px;
+}
+.crop-head { font-size: 16px; font-weight: 800; color: #0F172A; margin: 2px 2px 10px; }
+.crop-stage {
+  position: relative; width: 100%; aspect-ratio: 140 / 96; overflow: hidden;
+  border-radius: 12px; background: #0B1220; cursor: grab;
+  touch-action: none; user-select: none;
+}
+.crop-stage.drag { cursor: grabbing; }
+.crop-stage img {
+  position: absolute; left: 0; top: 0; max-width: none; display: block;
+  -webkit-user-drag: none; user-select: none; pointer-events: none;
+}
+.crop-stage::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  border-radius: 12px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.75);
+}
+.crop-zoom { display: flex; align-items: center; gap: 10px; margin: 12px 2px 14px; }
+.crop-zoom span { font-size: 14px; opacity: .7; }
+.crop-zoom input[type=range] { flex: 1; accent-color: #0F172A; height: 22px; padding: 0; border: 0; background: transparent; }
+.crop-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.crop-actions button { padding: 8px 16px; border-radius: 10px; font-size: 13.5px; font-weight: 700; }
+.crop-actions .crop-cancel { background: #FFFFFF; color: #334155; border: 1px solid #E2E8F0; }
+.crop-actions .crop-cancel:hover { background: #F1F5F9; color: #0F172A; }
+.crop-actions .crop-save { background: #0F172A; color: #FFFFFF; border: 1px solid #0F172A; }
+.crop-actions .crop-save:hover { background: #1E293B; color: #FFFFFF; }
+
 /* ---------- Апп нээгдэх үеийн splash (PWA лого) ---------- */
 #splash {
   position: fixed; inset: 0; z-index: 9999;
@@ -843,7 +877,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=426"></script>
+<script src="/tree_client.js?v=428"></script>
 </body>
 </html>`;
 }

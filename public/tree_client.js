@@ -2281,6 +2281,7 @@ function genitiveName(name) {
       '<input type="text" id="' + p + '_photo" placeholder="/img/16 эсвэл https://..." value="' + escapeHtml(realPhoto(m.photo)) + '" data-orig="' + escapeHtml(realPhoto(m.photo)) + '" oninput="window.__photoPrev(\'' + p + '\')">' +
       // Одоогийн зургийг (lazy линк ч) урьдчилан харуулна — хоосон мэт харагдахгүй
       '<div class="photo-prev" id="' + p + '_prev">' + photoShowHtml(m.photo) + '</div>' +
+      (realPhoto(m.photo) ? '<button type="button" class="ghost" style="margin-top:6px;font-size:12px;margin-right:6px" onclick="window.__photoCrop(\'' + p + '\')">✂ Зураг тааруулах</button>' : '') +
       (m.photo ? '<button type="button" class="ghost" style="margin-top:6px;font-size:12px" onclick="window.__photoDel(\'' + p + '\')">🗑 Зургийг устгах</button>' : '') +
       '<label class="f">Эмодзи-аватар (заавал биш)</label>' +
       '<div class="emo-chips" id="' + p + '_emo">' + EMOJIS.map(e =>
@@ -2348,16 +2349,163 @@ function genitiveName(name) {
     if (cur && cur.dataset.e === e) { cur.classList.remove('on'); return; }
     box.querySelectorAll('span').forEach(s => s.classList.toggle('on', s.dataset.e === e));
   };
+  // ---------- ЗУРАГ ТААРУУЛАХ (cropper) ----------
+  // Картын өргөн/өндрийн харьцаа (140×96) — тайрах хүрээ яг үүнтэй тэнцүү.
+  const CARD_AR = 140 / 96;
+  const CROP_OUT_W = 700;                      // гарах зургийн өргөн (2x retina)
+  const CROP_MAX_CHARS = 600000;               // серверийн хүлээх дээд хэмжээ
+  // Тааруулагч цонх: чирж зөөх + zoom. Буцаах: Promise<dataURL|null>
+  function cropModal(src) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'crop-wrap';
+      wrap.innerHTML =
+        '<div class="crop-panel" role="dialog" aria-label="Зураг тааруулах">' +
+          '<div class="crop-head">Зураг тааруулах</div>' +
+          '<div class="crop-stage" id="crop_stage"><img id="crop_img" alt="" draggable="false"></div>' +
+          '<div class="crop-zoom"><span aria-hidden="true">🔍</span>' +
+            '<input id="crop_zoom" type="range" min="100" max="400" step="1" value="100" aria-label="Томруулах"></div>' +
+          '<div class="crop-actions">' +
+            '<button type="button" class="crop-cancel">Болих</button>' +
+            '<button type="button" class="crop-save">Хадгалах</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(wrap);
+      const stage = wrap.querySelector('#crop_stage');
+      const img = wrap.querySelector('#crop_img');
+      const zoomEl = wrap.querySelector('#crop_zoom');
+      let iw = 0, ih = 0, zoom = 1, tx = 0, ty = 0, done = false;
+      const W = () => stage.clientWidth, H = () => stage.clientHeight;
+      const base = () => Math.max(W() / iw, H() / ih);   // «cover» — хүрээг бүрэн дүүргэнэ
+      const clampPan = () => {
+        const sc = base() * zoom, dw = iw * sc, dh = ih * sc;
+        tx = Math.min(0, Math.max(W() - dw, tx));
+        ty = Math.min(0, Math.max(H() - dh, ty));
+      };
+      const paint = () => {
+        const sc = base() * zoom;
+        img.style.width = Math.round(iw * sc) + 'px';
+        img.style.height = Math.round(ih * sc) + 'px';
+        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px)';
+      };
+      const center = () => {
+        const sc = base() * zoom;
+        tx = Math.round((W() - iw * sc) / 2);
+        ty = Math.round((H() - ih * sc) / 2);
+        clampPan(); paint();
+      };
+      const close = (val) => {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey);
+        wrap.remove();
+        resolve(val);
+      };
+      const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(null); } };
+
+      img.onload = () => {
+        iw = img.naturalWidth || img.width; ih = img.naturalHeight || img.height;
+        if (!iw || !ih) return close(null);
+        center();
+      };
+      img.onerror = () => { toast('Энэ зургийг нээх боломжгүй байна'); close(null); };
+      img.src = src;
+
+      // Чирж зөөх (хулгана + хуруу — pointer events)
+      let drag = null;
+      stage.addEventListener('pointerdown', (e) => {
+        drag = { x: e.clientX, y: e.clientY, tx, ty };
+        try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+        stage.classList.add('drag');
+      });
+      stage.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        tx = drag.tx + (e.clientX - drag.x);
+        ty = drag.ty + (e.clientY - drag.y);
+        clampPan(); paint();
+      });
+      const endDrag = () => { drag = null; stage.classList.remove('drag'); };
+      stage.addEventListener('pointerup', endDrag);
+      stage.addEventListener('pointercancel', endDrag);
+      stage.addEventListener('pointerleave', endDrag);
+
+      // Томруулах — төвөө тойрч томорно
+      zoomEl.addEventListener('input', () => {
+        const z2 = Math.max(1, (+zoomEl.value || 100) / 100);
+        const cx = W() / 2, cy = H() / 2, k = z2 / zoom;
+        tx = cx - (cx - tx) * k;
+        ty = cy - (cy - ty) * k;
+        zoom = z2; clampPan(); paint();
+      });
+
+      wrap.querySelector('.crop-cancel').onclick = () => close(null);
+      wrap.addEventListener('click', (e) => { if (e.target === wrap) close(null); });
+      document.addEventListener('keydown', onKey);
+      wrap.querySelector('.crop-save').onclick = () => {
+        try {
+          const sc = base() * zoom;
+          const sx = -tx / sc, sy = -ty / sc, sw = W() / sc, sh = H() / sc;
+          let outW = CROP_OUT_W, url = '';
+          for (let i = 0; i < 5; i++) {
+            const outH = Math.max(1, Math.round(outW / CARD_AR));
+            const cv = document.createElement('canvas');
+            cv.width = outW; cv.height = outH;
+            const cx2 = cv.getContext('2d');
+            cx2.fillStyle = '#fff'; cx2.fillRect(0, 0, outW, outH);
+            cx2.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+            url = cv.toDataURL('image/jpeg', 0.88);
+            if (url.length <= CROP_MAX_CHARS) break;
+            outW = Math.round(outW * 0.82);
+          }
+          if (!url || url.length > CROP_MAX_CHARS) { toast('Зураг багтахгүй байна — өөр зураг сонгоно уу'); return; }
+          close(url);
+        } catch (e) {
+          toast('Энэ зургийг тайрч чадсангүй (гадаад линк байж болно)');
+        }
+      };
+    });
+  }
+  // Файлаас: объект URL үүсгэж, тааруулагчийг нээж, үр дүнг буцаана
+  async function cropPhoto(file) {
+    const url = URL.createObjectURL(file);
+    try { return await cropModal(url); }
+    finally { try { URL.revokeObjectURL(url); } catch (e) {} }
+  }
   window.__photoPick = async (p) => {
     const inp = $(p + '_file');
     const f = inp && inp.files && inp.files[0];
     if (!f) return;
     try {
-      const url = await resizePhoto(f);
+      if (!/^image\//i.test(f.type || '') && !/\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(f.name || '')) {
+        throw new Error('Зураг файл биш байна');
+      }
+      // Эхлээд тааруулагч — хэрэглэгч нүүрээ төвлөрүүлнэ
+      let url = await cropPhoto(f);
+      if (url == null) { inp.value = ''; return; }      // «Болих»
       $(p + '_photo').value = url;
       window.__photoPrev(p);
       inp.value = '';
-    } catch (e) { toast(e.message); }
+    } catch (e) {
+      // Тааруулагч нээгдэхгүй бол (жишээ нь HEIC) хуучин аргаар шууд жижиглэнэ
+      try {
+        const url = await resizePhoto(f);
+        $(p + '_photo').value = url;
+        window.__photoPrev(p);
+        inp.value = '';
+      } catch (e2) { toast(e2.message || e.message); inp.value = ''; }
+    }
+  };
+  // Одоо байгаа зургийг дахин тааруулах (засах форм)
+  window.__photoCrop = async (p) => {
+    const inp = $(p + '_photo');
+    const pv = $(p + '_prev');
+    const pvImg = pv && pv.querySelector('img');
+    // Талбар хоосон боловч карт дээр зураг байгаа бол (lazy линк) түүнийг авна
+    const src = (inp ? String(inp.value || '').trim() : '') || (pvImg ? String(pvImg.getAttribute('src') || '') : '');
+    if (!src) { toast('Эхлээд зураг сонгоно уу'); return; }
+    try {
+      const url = await cropModal(src);
+      if (url) { inp.value = url; window.__photoPrev(p); }
+    } catch (e) { toast('Энэ зургийг тайрч чадсангүй (гадаад линк байж болно)'); }
   };
   // Утасны камераар авсан ТОМ зургийг ч хүлээж авна:
   //  • эх файл 40MB хүртэл (өмнө 10MB-аас дээш бол шууд алдаа гардаг байсан)
