@@ -629,7 +629,13 @@
     return (focus != null && focusL && focusL.focus === focus) ? focusL : S.layout;
   }
   function shownIds() {
-    let ids = new Set(nodes.keys());
+    // ХАРАГДАХ КАРТУУД = АШИГЛАЖ БУЙ байрлалын (activeLayout) гишүүд.
+    // «Бүтэн мод»-ын fullL нь S.layout-аас олон хүнтэй байж болох тул зөвхөн
+    // nodes (state-ийн анхны байрлал) дээр тулгуурлавал мод 18 карт дээр
+    // тасарч, 160 гишүүнтэй гэр бүлд «2-3 хүн харагдана» гэсэн алдаа гарна.
+    const curL = activeLayout() || {};
+    const curNodes = curL.nodes || [];
+    let ids = new Set(curNodes.length ? curNodes.map(n => n.id) : nodes.keys());
     if (focus != null && !showHidden) {
       const fs = focusSet(focus);
       ids = new Set([...ids].filter(id => fs.has(id) || revealed.has(id)));
@@ -1037,6 +1043,13 @@
     if (!fitted && (L.nodes || []).length) {
       fitted = true;
       fit();
+      // 160 гишүүнтэй өргөн мод дэлгэцэнд «толбо» болж жижигрэхгүйн тулд
+      // уншигдахуйц доод зум (0.62) тавина — бүтнийг харахыг хүсвэл pinch out.
+      if (view.z < 0.5) {
+        const vp0 = $('viewport');
+        view.z = Math.max(0.62, Math.min(1.1, (vp0 ? vp0.clientWidth : 360) / 430));
+        applyView();
+      }
       // ЛОГИН ХИЙХЭД ӨӨРИЙН КАРТ ДЭЭР ШУУД ОЧНО: хэрэглэгч модны карттай
       // холбогдсон бол эхний харагдац түүний карт дээр төвлөрнө.
       const me = S.viewer && S.viewer.member_id;
@@ -1073,7 +1086,11 @@
     const p = $('panel'); if (p) p.classList.add('hidden');
     // Нэвтрэхэд/«Үндсэн мод»-оор ороход өөрийн (нээсэн) хүний салбар
     // шууд нээлттэй байна — тэр хүн ах/дүү нарынхаа хамгийн баруун захad гарна.
-    fullOpen = (openId != null) ? openId : null;
+    // «Үндсэн мод» = БҮХ гишүүн (160 хүнтэй гэр бүлд бүгд харагдана).
+    // Өмнө нь энд openId тавьдаг байсан тул сервер зөвхөн нэг салбарыг
+    // (эцэг/эх + шууд хүүхдүүд) буцааж, «2-3 хүн л харагдана» гэсэн алдаа гардаг.
+    // Салбарыг accordion-оор нээх нь карт дээр дарахад ажилласaар байна.
+    fullOpen = null;
     fullClosed = false;
     render();
     await loadFullLayout();
@@ -1190,7 +1207,8 @@
     } else {
       w = FL.width || 900; h = FL.height || 600;
     }
-    const z = Math.max(0.12, Math.min(1.1, Math.min((vw - 36) / w, (vh - 70) / h)));
+    // Доод хязгаар 0.03 — 160 гишүүнтэй өргөн модыг ч бүтнээрээ багтааж чадна
+    const z = Math.max(0.03, Math.min(1.1, Math.min((vw - 36) / w, (vh - 70) / h)));
     view.z = z;
     // ХОЁР тэнхлэгээр төвлөрүүлнэ — дээр/доор хоосон зай, баруун захад тасралт байхгүй
     view.x = (vw - w * z) / 2 - x1 * z;
@@ -1198,7 +1216,7 @@
     applyView();
   }
   function zoomAt(mx, my, nz) {
-    nz = Math.max(0.15, Math.min(2.6, nz));
+    nz = Math.max(0.03, Math.min(2.6, nz));   // бүтэн мод харагдуулахаар холдуулж болно
     view.x = mx - (mx - view.x) * (nz / view.z);
     view.y = my - (my - view.y) * (nz / view.z);
     view.z = nz;
