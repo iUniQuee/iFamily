@@ -2653,7 +2653,7 @@ function genitiveName(name) {
         '<div class="pager"><button ' + (j.page <= 1 ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page - 1) + ',\'' + tb + '\')">← Өмнөх</button>' +
         '<span>' + j.page + ' / ' + j.pages + '</span>' +
         '<button ' + (j.page >= j.pages ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page + 1) + ',\'' + tb + '\')">Дараагийн →</button></div>' +
-        '<div style="font-size:11px;color:var(--muted);margin-top:6px">🇲🇳 — Бүх нийтээр амарч тэмдэглэдэг баярууд · 🎂 — Төрсөн өдөр. Насбарсан болон «зөвхөн төрсөн он» жагсаалтад орохгүй.</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">🇲🇳 — Бүх нийтээр амарч тэмдэглэдэг баярууд · 🎂 — Төрсөн өдөр.</div>' +
         (!ps.on && ps.isIOS && !ps.standalone
           ? '<div style="font-size:11.5px;color:#a8691b;background:rgba(224,164,88,.14);border:1px solid rgba(224,164,88,.4);border-radius:10px;padding:7px 9px;margin-top:8px">📱 iPhone дээр мэдэгдэл авахын тулд Safari-аас <b>«Нүүр дэлгэцэд нэмэх»</b> хийсэн апп дотор нээнэ үү — энгийн таб дээр ирэхгүй.</div>'
           : ''),
