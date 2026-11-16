@@ -213,6 +213,8 @@
     return out;
   }
   // (debug/шалгалт) тухайн гишүүнд харуулах хамаатны шошго
+  // Зурхайн шалгалтын hook (жил → билгийн жилийн нэр)
+  window.__zurkhai = (y) => zurkhaiOf({ birth_date: String(y) + '-06-01', sex: 'm' });
   window.__rel = (id, center) => { const m = labelsFrom(center); return m ? (m.get(Number(id)) || null) : null; };
   function kinOf(id) {
     if (id == null || !byId.has(id)) return null;

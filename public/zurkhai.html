@@ -128,6 +128,15 @@
   const ELEMS10 = ['Мод', 'Мод', 'Гал', 'Гал', 'Шороо', 'Шороо', 'Төмөр', 'Төмөр', 'Ус', 'Ус'];
   const ELEM_COLOR = { 'Мод': 'ногоон', 'Гал': 'улаан', 'Шороо': 'шар', 'Төмөр': 'цагаан', 'Ус': 'хар' };
   const COLOR_GEN = { 'ногоон': 'ногооны', 'улаан': 'улааны', 'шар': 'шарын', 'цагаан': 'цагаагийн', 'хар': 'харын' };
+  // ӨНГӨНИЙ ДАГАВАР — эр жилийн 6 амьтан (Хулгана, Бар, Луу, Морь, Бичин, Нохой) дээр
+  // дагаваргүй (Улаан нохой), эм жилийн 6 амьтан (Үхэр, Туулай, Могой, Хонь, Тахиа, Гахай)
+  // дээр «-гчин» (Улаагчин хонь).
+  const COLOR_ADJ = {
+    'ногоон': ['хөх', 'хөхөгчин'], 'улаан': ['улаан', 'улаагчин'], 'шар': ['шар', 'шарагчин'],
+    'цагаан': ['цагаан', 'цагаагчин'], 'хар': ['хар', 'харагчин']
+  };
+  // 9 мэнгэний албан ёсны нэршил
+  const MENGGE9 = [null, 'цагаан', 'хар', 'хөх', 'ногоон', 'шар', 'цагаан', 'улаан', 'цагаан', 'улаан'];
   // 8 суудал — жилийн цикл
   const SEATS8 = ['Мод', 'Гал', 'Шороо', 'Ус', 'Төмөр', 'Хий', 'Уул', 'Огторгуй'];
   // Дугуй диаграм дээрх байрлал (дээд талаас нар зөв)
@@ -148,27 +157,31 @@
     const animal = ANIMALS[mod(y - 4, 12)];
     const elem = ELEMS10[mod(y - 4, 10)];
     const color = ELEM_COLOR[elem];
+    const aIdx = mod(y - 4, 12);          // 0,2,4… = эр жил; 1,3,5… = эм жил
+    const colorAdj = COLOR_ADJ[color][aIdx % 2 === 0 ? 0 : 1];
     const seat = SEATS8[mod(y - 4, 8)];
     const seatIdx = WHEEL.indexOf(seat);
     const nextSeat = WHEEL[mod(seatIdx + 1, 8)];
     const prevColor = ELEM_COLOR[ELEMS10[mod(y - 5, 10)]];
+    const prevColorAdj = COLOR_ADJ[prevColor][mod(y - 5, 12) % 2 === 0 ? 0 : 1];
     const prevAnimal = ANIMALS[mod(y - 5, 12)];
     const nowAnimal = ANIMALS[mod(NOW_YEAR - 4, 12)];
     const nowColor = ELEM_COLOR[ELEMS10[mod(NOW_YEAR - 4, 10)]];
+    const nowColorAdj = COLOR_ADJ[nowColor][mod(NOW_YEAR - 4, 12) % 2 === 0 ? 0 : 1];
     const isF = sex === 'f';
     return {
       year: y,
       sex: isF ? 'f' : 'm',
       animal: animal[0], animalAdj: animal[1], icon: animal[2],
-      elem: elem, color: color, colorGen: COLOR_GEN[color],
-      prevColorGen: COLOR_GEN[prevColor], prevAnimalAdj: prevAnimal[1],
+      elem: elem, color: color, colorGen: COLOR_GEN[color], colorAdj: colorAdj,
+      prevColorAdj: prevColorAdj, prevColorGen: COLOR_GEN[prevColor], prevAnimalAdj: prevAnimal[1],
       mengge: mod(y - 4, 9) || 9,
-      menggeColor: isF ? 'хар' : 'цагаан',
+      menggeColor: MENGGE9[mod(y - 4, 9) || 9] || 'цагаан',
       seat: seat, nextSeat: nextSeat,
       lunarYear: y,
       lunarAge: NOW_YEAR - y + 1,
       nowYear: NOW_YEAR,
-      nowColor: nowColor, nowAnimalAdj: nowAnimal[1],
+      nowColor: nowColor, nowColorAdj: nowColorAdj, nowAnimalAdj: nowAnimal[1],
       nextTsagaanYear: NOW_YEAR + 1,
       nextTsagaan: TSAGAAN[NOW_YEAR + 1] || '02.07',
       countDir: isF ? 'нар буруу' : 'нар зөв'
@@ -236,11 +249,11 @@
 
     // ── Жил
     $('jl-icon').textContent = z.icon;
-    $('jl-title').textContent = cap(z.color) + ' ' + z.animalAdj + ' жил';
-    $('jl-prev').textContent = 'Цагаан сараас өмнө төрсөн бол ' + z.prevColorGen + ' ' + z.prevAnimalAdj + ' жил';
+    $('jl-title').textContent = cap(z.colorAdj) + ' ' + z.animalAdj + ' жил';
+    $('jl-prev').textContent = 'Цагаан сараас өмнө төрсөн бол ' + z.prevColorAdj + ' ' + z.prevAnimalAdj + ' жил';
     $('jl-year').textContent = z.lunarYear + ' оны билгийн жил · билгийн нас ' + z.lunarAge;
     $('jl-mengge').innerHTML = 'Мэнгэ: <b>' + z.mengge + ' ' + z.menggeColor + '</b>';
-    $('jl-now').textContent = 'Одоогийн билгийн жил: ' + z.nowColor + ' ' + z.nowAnimalAdj + ' жил (' + z.nowYear + ')';
+    $('jl-now').textContent = 'Одоогийн билгийн жил: ' + z.nowColorAdj + ' ' + z.nowAnimalAdj + ' жил (' + z.nowYear + ')';
 
     // ── Суудал
     $('wheel').innerHTML = wheelSvg(z);
