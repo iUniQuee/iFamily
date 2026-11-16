@@ -2041,7 +2041,7 @@ async function api(req, env, url, path) {
 
   // --- Excel экспорт (админ): бүх бүртгэгдсэн хүний мэдээлэл ---
   if (path === '/api/export.xlsx' && method === 'GET') {
-    needAdmin();
+    needSuper();   // backup файлууд — зөвхөн супер админ
     const ctx = await contextOf(user, env);
     const bytes = xlsxBytes(ctx);
     const fn = "i-family-members-" + new Date().toISOString().slice(0, 10) + ".xlsx";
@@ -2053,9 +2053,9 @@ async function api(req, env, url, path) {
     } });
   }
 
-  // --- БҮРЭН ZIP (админ): дата + Excel + CSV + D1 схем + тайлбар нэг файлаар ---
+  // --- БҮРЭН ZIP (супер админ): дата + Excel + CSV + D1 схем + тайлбар нэг файлаар ---
   if (path === '/api/export.zip' && method === 'GET') {
-    needAdmin();
+    needSuper();   // backup файлууд — зөвхөн супер админ
     const ctx = await contextOf(user, env);
     const data = await backupData(env);
     const now = new Date();
@@ -2230,9 +2230,9 @@ async function api(req, env, url, path) {
     return json({ ok: true, restored, linked });
   }
 
-  // --- Бүрэн backup (админ) ---
+  // --- Бүрэн backup (супер админ) ---
   if (path === '/api/backup' && method === 'GET') {
-    needAdmin();
+    needSuper();   // backup файлууд — зөвхөн супер админ
     const data = await backupData(env);
     await audit(env, user, 'backup', `татсан: ${JSON.stringify(data.counts)}`);
     const fname = 'ifamily-backup-' + new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '') + '.json';
