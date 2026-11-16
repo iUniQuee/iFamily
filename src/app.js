@@ -598,7 +598,7 @@ const LUNAR_EVENTS = {
 };
 
 
-async function remindersFor(ctx, page, past) {
+async function remindersFor(ctx, page, past, limit) {
   // past=false → удахгүй болох (өнөөдрөөс хойш); past=true → сүүлийн 365 хоногт болж өнгөрсөн
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -655,7 +655,8 @@ async function remindersFor(ctx, page, past) {
     .filter(x => (past ? x.days < 0 : x.days >= 0))
     .sort((a, b) => (past ? b.days - a.days : a.days - b.days) ||
       (a.kind === b.kind ? a.name.localeCompare(b.name, 'mn') : (a.kind === 'b' ? -1 : 1)));
-  const size = 5;
+  // size: сануулгын цонх гүйлгэдэг жагсаалт болсон тул бүх мэдээллийг нэг дор өгч болно
+  const size = Math.min(500, Math.max(1, Number(limit) || 5));
   const pages = Math.max(1, Math.ceil(items.length / size));
   const p = Math.min(Math.max(1, page || 1), pages);
   return { total: items.length, page: p, pages, today: todayKey, past: !!past, items: items.slice((p - 1) * size, p * size) };
@@ -2299,7 +2300,7 @@ async function api(req, env, url, path) {
     need();
     const ctx = await contextOf(user, env);
     return json(await remindersFor(ctx, Number(url.searchParams.get('page')) || 1,
-      url.searchParams.get('past') === '1'));
+      url.searchParams.get('past') === '1', Number(url.searchParams.get('limit')) || 0));
   }
 
   // --- цомог ---

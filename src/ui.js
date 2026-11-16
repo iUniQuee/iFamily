@@ -449,6 +449,61 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
 .crop-actions .crop-save { background: #0F172A; color: #FFFFFF; border: 1px solid #0F172A; }
 .crop-actions .crop-save:hover { background: #1E293B; color: #FFFFFF; }
 
+/* ---------- САНУУЛГА (Төрсөн өдөр ба баяр) ---------- */
+.rem-tabs { display: flex; gap: 4px; background: #F1F5F9; border-radius: 999px; padding: 3px; margin: 0 0 10px; }
+.rem-tabs .seg {
+  flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 7px 10px;
+  font-size: 13px; font-weight: 700; color: #64748B; box-shadow: none;
+}
+.rem-tabs .seg:hover { background: transparent; color: #0F172A; box-shadow: none; }
+.rem-tabs .seg.on { background: #FFFFFF; color: #0F172A; box-shadow: 0 1px 3px rgba(15,23,42,.14); }
+.rem-list {
+  max-height: 360px; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 2px 4px;
+  scrollbar-width: thin; scrollbar-color: #E2E8F0 transparent;
+}
+.rem-list::-webkit-scrollbar { width: 8px; }
+.rem-list::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 8px; }
+.rem-list::-webkit-scrollbar-track { background: transparent; }
+.rem-row { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 12px; }
+.rem-row:hover { background: #F8FAFC; }
+.rem-av {
+  position: relative; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%;
+  overflow: hidden; background: #E8EEF6; display: grid; place-items: center;
+}
+.rem-av-i { font-size: 13px; font-weight: 800; color: #64748B; }
+.rem-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.rem-av-h { background: #FFF7ED; border-radius: 10px; }
+.rem-av-h svg { display: block; width: 18px; height: 18px; }
+.rem-mid { flex: 1; min-width: 0; }
+.rem-nm {
+  font-size: 13.5px; font-weight: 700; color: #0F172A; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rem-pat { color: #94A3B8; font-weight: 600; }
+.rem-sub { font-size: 11.5px; color: #94A3B8; margin-top: 1px; }
+.rem-when { font-size: 12px; font-weight: 800; color: #475569; white-space: nowrap; }
+.rem-when.today { color: #0EA5E9; }
+.rem-empty { font-size: 12.5px; color: #94A3B8; padding: 16px 6px; text-align: center; }
+.rem-legend { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #94A3B8; margin-top: 8px; }
+.rem-legend .rem-ic { flex: 0 0 16px; width: 16px; height: 16px; display: block; }
+.rem-ios {
+  font-size: 11.5px; color: #A8691B; background: rgba(224,164,88,.14);
+  border: 1px solid rgba(224,164,88,.4); border-radius: 10px; padding: 7px 9px; margin-top: 8px;
+}
+.rem-foot { display: flex; align-items: center; gap: 10px; flex: 1; }
+.rem-foot-l { font-size: 12.5px; color: #475569; line-height: 1.35; flex: 1; }
+.sw {
+  position: relative; flex: 0 0 42px; width: 42px; height: 24px; border-radius: 999px;
+  border: 0; background: #E2E8F0; padding: 0; transition: background .18s ease;
+}
+.sw i {
+  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #FFFFFF; box-shadow: 0 1px 2px rgba(15,23,42,.28); transition: left .18s ease;
+}
+.sw.on { background: #10B981; }
+.sw.on i { left: 21px; }
+
 /* ---------- Апп нээгдэх үеийн splash (PWA лого) ---------- */
 #splash {
   position: fixed; inset: 0; z-index: 9999;
@@ -886,7 +941,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=429"></script>
+<script src="/tree_client.js?v=431"></script>
 </body>
 </html>`;
 }

@@ -2984,70 +2984,62 @@ function genitiveName(name) {
       if (typeof window.__reminders === 'function') window.__reminders(window.__remPage || 1, window.__remTab || 'up');
     }
   };
+  // Баяр/төрсөн өдрийн дүрс — «MN» үсэг эсвэл хоосон дүрсний оронд өнгөт SVG
+  const HOLI_ICON = '<svg class="rem-ic" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">' +
+    '<rect x="3.2" y="5.2" width="17.6" height="15.6" rx="4" fill="#FFF7ED" stroke="#F97316" stroke-width="1.7"/>' +
+    '<path d="M3.2 10.4h17.6" stroke="#F97316" stroke-width="1.7"/>' +
+    '<path d="M8 3.2v3.4M16 3.2v3.4" stroke="#F97316" stroke-width="1.9" stroke-linecap="round"/>' +
+    '<path d="m12 12.6.95 2 2.2.3-1.6 1.5.4 2.15L12 17.5l-1.95 1.05.4-2.15-1.6-1.5 2.2-.3z" fill="#F59E0B"/>' +
+    '</svg>';
   window.__reminders = async (page, tab) => {
     try {
       // Таб: 'up' = удахгүй болох (анхдагч), 'past' = өнгөрсөн
       const tb = (tab || window.__remTab) === 'past' ? 'past' : 'up';
       window.__remTab = tb;
-      window.__remPage = page || 1;
-      const j = await getJson('/api/reminders?page=' + (page || 1) + (tb === 'past' ? '&past=1' : ''));
+      // Бүх бичлэгийг нэг дор авна — жагсаалт нь гүйлгэдэг (хуудаслалт байхгүй)
+      const j = await getJson('/api/reminders?limit=500' + (tb === 'past' ? '&past=1' : ''));
       const ps = await pushDeviceState();
-      // «Өчигдөр», «2 хоногийн өмнө» … (зөвхөн өнгөрсөн таб)
       const agoText = (d) => {
         const n = Math.abs(d);
         if (n === 1) return 'Өчигдөр';
         return n + ' хоногийн өмнө';
       };
       const rows = j.items.map(it => {
-        const icon = it.kind === 'h' ? (it.icon || '🇲🇳') : '🎂';
-        // Төрсөн өдрийн хүнийг ААВЫН НЭРЭЭР (эцгийн нэр) харуулна — ургийн овог биш.
-        // Аав нь бүртгэгдээгүй бол зөвхөн нэр.
-        const nm = (it.kind === 'b' && it.pat)
-          ? '<span style="color:var(--muted)">' + escapeHtml(it.pat) + '</span> ' + escapeHtml(it.name)
-          : escapeHtml(it.name);
-        const right = tb === 'past'
-          ? agoText(it.days)
-          : (it.days === 0 ? 'ӨНӨӨДӨР' : it.days + ' хоног');
-        // Нас: зөвхөн төрсөн өдөрт (баяр дээр харуулахгүй)
-        const ageChip = (it.kind === 'b' && it.age != null && it.age > 0)
-          ? '<span style="font-size:11.5px;color:var(--muted);background:var(--bg2);border-radius:8px;padding:1px 6px;white-space:nowrap">' +
-            it.age + ' нас ' + (tb === 'past' ? 'хүрсэн' : 'хүрнэ') + '</span>'
-          : '';
-        return '<div class="list-row"><span class="grow">' + icon + ' ' + nm + ' ' + ageChip + '</span>' +
-          '<span style="opacity:.7">' + escapeHtml(it.date || it.birth_date || '') + '</span>' +
-          '<b>' + right + '</b></div>';
+        const isB = it.kind === 'b';
+        // Төрсөн өдөр — жижиг дугуй профайл зураг (32px), баяр — өнгөт SVG дүрс
+        const initial = escapeHtml(((it.name || '?').trim().charAt(0) || '?').toUpperCase());
+        const av = isB
+          ? '<span class="rem-av"><span class="rem-av-i">' + initial + '</span>' +
+            '<img src="/api/members/' + it.id + '/photo" alt="" loading="lazy" onerror="this.remove()"></span>'
+          : '<span class="rem-av rem-av-h">' + HOLI_ICON + '</span>';
+        const mid = isB
+          ? '<div class="rem-nm">' + (it.pat ? '<span class="rem-pat">' + escapeHtml(it.pat) + '</span> ' : '') +
+            escapeHtml(it.name) + '</div>' +
+            '<div class="rem-sub">' + (it.age != null && it.age > 0
+              ? it.age + ' нас ' + (tb === 'past' ? 'хүрсэн' : 'хүрнэ') : 'Төрсөн өдөр') + '</div>'
+          : '<div class="rem-nm">' + escapeHtml(it.name) + '</div><div class="rem-sub">Нийтээр амардаг баяр</div>';
+        const when = tb === 'past' ? agoText(it.days) : (it.days === 0 ? 'Өнөөдөр' : it.days + ' хоног');
+        return '<div class="rem-row">' + av + '<div class="rem-mid">' + mid + '</div>' +
+          '<div class="rem-when' + (it.days === 0 ? ' today' : '') + '">' + when + '</div></div>';
       }).join('') ||
-        '<div style="color:var(--muted)">' + (tb === 'past'
+        '<div class="rem-empty">' + (tb === 'past'
           ? 'Сүүлийн жилд болж өнгөрсөн тэмдэглэлт өдөр олдохгүй байна.'
           : 'Тэмдэглэлт өдөр олдохгүй байна.') + '</div>';
-      // Цонхны гарчигны доорх 2 таб
-      const tabBtn = (k, label) => {
-        const on = k === tb;
-        return '<button onclick="window.__reminders(1,\'' + k + '\')" style="flex:1;font-size:13px;' +
-          (on
-            ? 'background:#2fae6a;border-color:#2fae6a;color:#fff;font-weight:800'
-            : 'background:transparent;color:var(--muted)') + '">' + label + '</button>';
-      };
-      const tabs = '<div style="display:flex;gap:6px;margin:0 0 10px">' +
-        tabBtn('up', 'Удахгүй болох') + tabBtn('past', 'Өнгөрсөн') + '</div>';
-      openModal('🎂 Төрсөн өдөр ба баярын сануулга', tabs + rows +
-        '<div class="pager"><button ' + (j.page <= 1 ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page - 1) + ',\'' + tb + '\')">← Өмнөх</button>' +
-        '<span>' + j.page + ' / ' + j.pages + '</span>' +
-        '<button ' + (j.page >= j.pages ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page + 1) + ',\'' + tb + '\')">Дараагийн →</button></div>' +
-        '<div style="font-size:11px;color:var(--muted);margin-top:6px">🇲🇳 — Бүх нийтээр амарч тэмдэглэдэг баярууд · 🎂 — Төрсөн өдөр.</div>' +
+      const seg = (k, label) => '<button class="seg' + (k === tb ? ' on' : '') +
+        '" onclick="window.__reminders(1,\'' + k + '\')">' + label + '</button>';
+      const body =
+        '<div class="rem-tabs">' + seg('up', 'Удахгүй болох') + seg('past', 'Өнгөрсөн') + '</div>' +
+        '<div class="rem-list">' + rows + '</div>' +
+        '<div class="rem-legend">' + HOLI_ICON + '<span>Бүх нийтээр амарч тэмдэглэдэг баярууд</span></div>' +
         (!ps.on && ps.isIOS && !ps.standalone
-          ? '<div style="font-size:11.5px;color:#a8691b;background:rgba(224,164,88,.14);border:1px solid rgba(224,164,88,.4);border-radius:10px;padding:7px 9px;margin-top:8px">📱 iPhone дээр мэдэгдэл авахын тулд Safari-аас <b>«Нүүр дэлгэцэд нэмэх»</b> хийсэн апп дотор нээнэ үү — энгийн таб дээр ирэхгүй.</div>'
-          : ''),
-        // Доод хэсэг: зүүн талд «Мэдэгдэл асаах» (ассан бол «идэвхтэй»), баруун талд «Цуцлах»
-        '<div style="display:flex;align-items:center;gap:8px;width:100%">' +
-          '<button id="bdayPushBtn" onclick="window.__bdayPush()" style="font-size:13.5px;' +
-            (ps.on ? 'background:rgba(47,174,106,.16);border-color:rgba(47,174,106,.5);color:inherit' : '') + '">' +
-            (ps.on ? '✅ Мэдэгдэл идэвхтэй' : '🔔 Мэдэгдэл асаах') +
-          '</button>' +
-          (ps.on ? '' : '<span style="font-size:11px;color:var(--muted)">Төрсөн өдөр, баярын өдрүүдэд мэдэгдэнэ</span>') +
-          '<span style="flex:1"></span>' +
-          '<button onclick="window.__closeModal()">Цуцлах</button>' +
-        '</div>');
+          ? '<div class="rem-ios">📱 iPhone дээр мэдэгдэл авахын тулд Safari-аас <b>«Нүүр дэлгэцэд нэмэх»</b> хийсэн апп дотор нээнэ үү — энгийн таб дээр ирэхгүй.</div>'
+          : '');
+      const foot = '<div class="rem-foot">' +
+        '<button class="sw' + (ps.on ? ' on' : '') + '" id="remSw" title="' +
+        (ps.on ? 'Асаалттай' : 'Асаах') + '" aria-pressed="' + (ps.on ? 'true' : 'false') + '" onclick="window.__bdayPush()"><i></i></button>' +
+        '<div class="rem-foot-l">Төрсөн өдөр, баярын өдрүүдэд мэдэгдэх</div>' +
+        '<button onclick="window.__closeModal()">Хаах</button></div>';
+      openModal('🎂 Төрсөн өдөр ба баярын сануулга', body, foot);
     } catch (e) { toast(e.message); }
   };
 
