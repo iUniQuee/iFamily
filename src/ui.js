@@ -337,6 +337,7 @@ button.btn-ok:hover { filter: brightness(.9); }
 html[data-card] .card.trial .box, .card.trial .box {
   background: #FFFFFF !important; border: 0 !important; border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,.05) !important; outline: none !important;
+  padding: 9px 4px 5px !important;   /* зургийн дээр тайван зай */
 }
 html[data-card] .card.trial.sel .box, html[data-card] .card.trial.focus .box,
 html[data-card] .card.trial.kin .box, html[data-card] .card.trial.asc .box,
@@ -354,9 +355,9 @@ html[data-card] .card.trial.desc .box {
 /* Пастел шошго */
 .card.trial .rpill {
   background: #EFF6FF; color: #1D4ED8; font-weight: 700;
-  border-radius: 999px; padding: 2px 10px;
+  border: 1px solid #BFDBFE; border-radius: 999px; padding: 2px 10px;
 }
-.card.trial.trial-f .rpill { background: #FDF2F8; color: #BE185D; }
+.card.trial.trial-f .rpill { background: #FDF2F8; color: #BE185D; border-color: #FBCFE8; }
 /* Хосын тасархай хүрээ хасагдана */
 .link-plat.trial-plat { display: none; }
 /* Нэгдсэн саарал холбоос: 2px, дугуй үзүүр */
@@ -366,15 +367,27 @@ html[data-card] .card.trial.desc .box {
 /* Хосын шугамын голд цагаан дугуй + саарал зүрх (SVG-д зурна) */
 .trial-heart text { font-family: inherit; line-height: 1; }
 /* Жижиг, төвийг сахисан үйлдлийн товчнууд */
-.card.trial .acts button { width: 28px; height: 28px; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.10); }
-.card.trial .acts .a-info, .card.trial .acts .a-edit {
-  background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0;
-  width: 28px; height: 28px; top: 34px;
+/* Үйлдлийн товчнууд — картын дээд ирмэг дээр хэвтээ pill бар */
+.card.trial .acts {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  top: -30px; display: flex; align-items: center; gap: 2px;
+  background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 999px;
+  padding: 3px 4px; box-shadow: 0 4px 12px rgba(0,0,0,.08); z-index: 6;
+  width: auto; height: auto;
 }
+.card.trial .acts button,
+.card.trial .acts .a-info,
+.card.trial .acts .a-edit,
 .card.trial .acts .a-add {
-  background: #0F172A; color: #FFFFFF; border: 1px solid #0F172A;
-  width: 28px; height: 28px; font-size: 16px;
+  position: static !important; left: auto !important; right: auto !important;
+  top: auto !important; transform: none !important; margin: 0;
+  width: 24px !important; height: 24px !important; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent !important; border: 0 !important;
+  color: #334155 !important; box-shadow: none !important;
+  font-size: 13px !important; border-radius: 50%;
 }
+.card.trial .acts button:hover { background: #F1F5F9 !important; }
 /* Нэгдсэн саарал холбоос — туршилтын харагдац идэвхтэй үед БҮХ шугам
    (шар/цэнхэр/ногоон/ягаан) нэг өнгөтэй, 2px болно */
 body.has-trial .link-s, body.has-trial .link-c,
@@ -827,7 +840,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=417"></script>
+<script src="/tree_client.js?v=419"></script>
 </body>
 </html>`;
 }

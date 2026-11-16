@@ -780,6 +780,7 @@
     const hlStub = (c) => relUp(c) ? ' link-up' : relClass(c);
     // холбоосууд
     let svg = '';
+    let heartOverlay = '';  // ТУРШИЛТ: зүрхийг бүх шугамаас ХОЙШ зурна
     // Байрлалын зангилаа — БҮХ шугамыг картын гол/ирмэгтэй тааруулна
     const LN = new Map((L.nodes || []).map(n => [n.id, n]));
     const CW = 156, CH = 96;
@@ -834,10 +835,10 @@
         svg += '<line class="link-s' + hlS(e.a, e.b) + (trialS ? ' trial-s' : '') + '" x1="' + sx1 + '" y1="' + sy1 + '" x2="' + sx2 + '" y2="' + sy2 + '"/>';
         // ТУРШИЛТ: хосын шугамын голд цагаан дугуй + саарал зүрх
         if (trialS) {
-          // Хосын шугамын голоос доош бага зэрэг буулгана — шугам дээр
-          // «＋/✎» товчнууд хөвдөг тул зүрх тэдний доор цэвэрхэн байрлана.
-          const hx = Math.round((sx1 + sx2) / 2), hy = Math.round((sy1 + sy2) / 2) + 34;
-          svg += '<g class="trial-heart"><circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>' +
+          // Хосын шугамын ЯГ ГОЛД байрлана. Бүх шугамаас хойш зурдаг тул
+          // доош буух салааны шугам зүрхний доороос эхэлсэн мэт харагдана.
+          const hx = Math.round((sx1 + sx2) / 2), hy = Math.round((sy1 + sy2) / 2);
+          heartOverlay = '<g class="trial-heart"><circle cx="' + hx + '" cy="' + hy + '" r="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>' +
             '<text x="' + hx + '" y="' + (hy + 3.5) + '" text-anchor="middle" font-size="11" fill="#94A3B8">&#9829;</text></g>';
         }
       } else if (e.t === 'b') {
@@ -961,6 +962,7 @@
     if (focus != null && !showHidden) {
       hiddenCount = (L.nodes || []).filter(n => !shown.has(n.id)).length;
     }
+    svg += heartOverlay;
     $('links').innerHTML = svg;
     // ТУРШИЛТ: дэвсгэр #F8FAFC зөвхөн туршилтын гишүүд дэлгэцэнд байх үед
     document.body.classList.toggle('has-trial', [...shown].some(id => isTrialId(id)));
