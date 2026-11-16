@@ -1534,6 +1534,9 @@ function genitiveName(name) {
     const panel = $('panel');
     const local = byId.get(id);
     if (!local) return;
+    // Панель ШУУД нээгдэнэ (хаалттай байсан ч) — өгөгдөл ирэхэд агуулга нь
+    // дүүрнэ. Ингэснээр карт дарахад «юу ч болоогүй» мэт харагдахгүй.
+    panel.classList.remove('hidden');
     if (RO) {
       panel.classList.remove('hidden');
       panel.innerHTML = '<h2>' + (local.photo
@@ -4089,13 +4092,35 @@ function genitiveName(name) {
   }
 
   // ---------- эхлэл ----------
-  // Панель нээгдэх/хаагдах бүрд body-д `panel-open` класс тавьж, модны
-  // талбарыг нарийсгана (CSS). Ингэснээр панель картуудыг халхлахгүй.
+  // Панель нээгдэх/хаагдах үед модны талбар (flex) нарийсаж/өргөсөх тул
+  // харагдацын төвийг хадгална — картууд гэнэт «баруун талд алга болохгүй».
   {
-    const pnl = $('panel');
-    const syncPanel = () => document.body.classList.toggle('panel-open', !pnl.classList.contains('hidden'));
-    new MutationObserver(syncPanel).observe(pnl, { attributes: true, attributeFilter: ['class'] });
-    syncPanel();
+    const vpEl = $('viewport');
+    let lastW = vpEl.clientWidth;
+    new ResizeObserver(() => {
+      const w = vpEl.clientWidth;
+      if (!w || w === lastW) return;
+      view.x += (w - lastW) / 2;
+      lastW = w;
+      applyView();
+      // Панель нээгдэж талбар нарийссан ч дарсан карт бүтнээрээ харагдана.
+      if (selected != null) keepCardVisible(selected);
+    }).observe(vpEl);
+  }
+  // Сонгосон карт модны харагдах хэсгийн ГАДНА гарсан бол хамгийн бага
+  // шилжүүлэг хийж бүтнээр нь харагдуулна (зум өөрчлөхгүй).
+  function keepCardVisible(id) {
+    const el = document.querySelector('#cards .card[data-id="' + id + '"]');
+    if (!el) return;
+    const vpEl = $('viewport');
+    const vr = vpEl.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const pad = 12;
+    let dx = 0, dy = 0;
+    if (r.left < vr.left + pad) dx = vr.left + pad - r.left;
+    else if (r.right > vr.right - pad) dx = vr.right - pad - r.right;
+    if (r.top < vr.top + pad) dy = vr.top + pad - r.top;
+    else if (r.bottom > vr.bottom - pad) dy = vr.bottom - pad - r.bottom;
+    if (dx || dy) { view.x += dx; view.y += dy; applyView(); }
   }
   compile();
   applyDesign();

@@ -91,19 +91,22 @@ button.ghost { background: transparent; }
 html { touch-action: pan-x pan-y; }
 html, body { overscroll-behavior: none; }
 body { -webkit-text-size-adjust: 100%; }
+/* Мод + профайл панель — ЗЭРЭГЦЭЭ (flex row). Панель нээгдэхэд модны талбар
+   өөрөө нарийсаж, картуудыг хэзээ ч халхлахгүй (overlay биш). */
+#main {
+  position: fixed; top: 52px; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: row; width: 100%; height: calc(100vh - 52px);
+  overflow: hidden;
+}
 #viewport {
-  position: fixed; inset: 52px 0 0 0; overflow: hidden; cursor: grab;
+  position: relative; flex: 1 1 auto; min-width: 0; height: 100%;
+  overflow: hidden; cursor: grab;
   /* ЗУМЫГ ЗӨВХӨН апп өөрөө зохицуулна — браузер хуудсыг томруулж, дээд
      мэнюг хөдөлгөх/алга болгохыг хориглоно. */
   touch-action: none; -webkit-user-select: none; user-select: none;
   background: #F8FAFC;
 }
 #viewport.dragging { cursor: grabbing; }
-/* Профайл панель нээлттэй үед модны талбар баруун тийшээ нарийсч, панель
-   картуудыг далдлахгүй — мод, панель зэрэгцэнэ (side-by-side). */
-@media (min-width: 641px) {
-  body.panel-open #viewport { right: 331px; }
-}
 
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; backface-visibility: hidden; }
 #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
@@ -201,9 +204,9 @@ html[data-card="best"] .card.focus .box { outline: 1px solid #2fae6a; outline-of
   background: #0ea5b7; color: #fff; border-color: #0b8b99;
 }
 #panel {
-  position: fixed; top: 52px; right: 0; bottom: 0; width: 330px; max-width: 92vw;
-  background: var(--panel); border-left: 1px solid var(--line); z-index: 40;
-  overflow-y: auto; padding: 14px; box-shadow: var(--shadow);
+  position: static; flex: 0 0 380px; width: 380px; height: 100%;
+  background: var(--panel); border-left: 1px solid var(--line); z-index: 1;
+  overflow-y: auto; padding: 14px;
 }
 #panel h2 { margin: 0 0 4px; font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 #panel h2 .pat { font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -700,7 +703,11 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
   #topbtns { gap: 5px; }
   #topbtns button, #topbtns .btn, #topbtns select { padding: 5px 8px; font-size: 12.5px; }
   .center { inset: 48px 0 0 0; }
-  #panel { inset: 48px 0 0 0; width: 100%; border-radius: 0; }
+  #main { top: 48px; height: calc(100vh - 48px); }
+  #panel {
+    position: fixed; inset: 48px 0 0 0; width: 100%; height: auto;
+    flex: none; z-index: 40; border-radius: 0; box-shadow: var(--shadow);
+  }
 }
 /* Утас: «Эрх ба карт холболт» зэрэг мөрүүд — нэр бүтэн мөр, удирдлагууд доор нь */
 @media (max-width: 640px) {
@@ -1197,6 +1204,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
   <div id="topbtns"></div>
   <div id="who"></div>
 </header>
+<div id="main">
 <main id="viewport">
   <div id="world">
     <svg id="links"></svg>
@@ -1219,11 +1227,12 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
   </div>
 </main>
 <aside id="panel" class="hidden"></aside>
+</div>
 <div id="modalroot" class="hidden"></div>
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=450"></script>
+<script src="/tree_client.js?v=452"></script>
 </body>
 </html>`;
 }
