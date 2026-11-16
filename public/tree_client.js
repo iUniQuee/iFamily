@@ -926,9 +926,11 @@
       return;
     }
     h += '<button onclick="window.__mainTree()" title="Бүх модыг бүтнээр харах">🌳 Үндсэн мод</button>';
-    if (S.viewer.member_id || role === 'admin' || role === 'super') {
-      h += '<a class="btn" href="/udam" title="Зөвхөн таны цусан хамаатан">🌳 Удам мод</a>';
-    }
+    // «🌳 Удам мод» товч ОДООХОНДО НУУГДСАН (хэрэглэгчдэд харагдахгүй).
+    // Дахин нээх бол доорх 3 мөрийг сэргээнэ үү:
+    // if (S.viewer.member_id || role === 'admin' || role === 'super') {
+    //   h += '<a class="btn" href="/udam" title="Зөвхөн таны цусан хамаатан">🌳 Удам мод</a>';
+    // }
     // «👤 <нэр>» — өөрийн карт руу буцах. Логин хийсэн үеийн үйлдэлтэй ижил:
     // карт нь идэвхтэй (selected) болж, дэлгэцийн голд фокуслана.
     h += '<button onclick="window.__reminders()">🎂 Сануулга</button>';
