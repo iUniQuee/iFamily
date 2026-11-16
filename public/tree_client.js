@@ -2120,7 +2120,10 @@ function genitiveName(name) {
 
   // ---------- бүрэн мэдээлэлтэй гишүүн форм (2-р зураг) ----------
   const EMOJIS = ['🙂', '🤷', '👨', '👩'];
-  const photoPrevHtml = (u) => (u ? '<img src="' + escapeHtml(u) + '" alt="">' : '');
+  // /api/members/<id>/photo — зөвхөн харуулах lazy линк; засах формд бодит утга биш
+  const LAZY_PHOTO = /^\/api\/members\/\d+\/photo$/i;
+  function realPhoto(u) { return LAZY_PHOTO.test(String(u || '')) ? '' : String(u || ''); }
+  const photoPrevHtml = (u) => (realPhoto(u) ? '<img src="' + escapeHtml(u) + '" alt="">' : '');
   function fullForm(p, m, withRel) {
     m = m || {};
     const sex = m.sex || '?';
@@ -2147,8 +2150,8 @@ function genitiveName(name) {
       '<button type="button" onclick="document.getElementById(\'' + p + '_file\').click()">📷 Зураг оруулах</button>' +
       '<input type="file" id="' + p + '_file" accept="image/*" style="display:none" onchange="window.__photoPick(\'' + p + '\')">' +
       '<label class="f">Эсвэл доорх талбарт линк бичнэ</label>' +
-      '<input type="text" id="' + p + '_photo" placeholder="/img/16 эсвэл https://..." value="' + escapeHtml(m.photo || '') + '" oninput="window.__photoPrev(\'' + p + '\')">' +
-      '<div class="photo-prev" id="' + p + '_prev">' + photoPrevHtml(m.photo || '') + '</div>' +
+      '<input type="text" id="' + p + '_photo" placeholder="/img/16 эсвэл https://..." value="' + escapeHtml(realPhoto(m.photo)) + '" oninput="window.__photoPrev(\'' + p + '\')">' +
+      '<div class="photo-prev" id="' + p + '_prev">' + photoPrevHtml(realPhoto(m.photo)) + '</div>' +
       '<label class="f">Эмодзи-аватар (заавал биш)</label>' +
       '<div class="emo-chips" id="' + p + '_emo">' + EMOJIS.map(e =>
         '<span data-e="' + e + '"' + (m.emoji === e ? ' class="on"' : '') +

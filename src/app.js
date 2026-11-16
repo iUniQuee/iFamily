@@ -375,9 +375,14 @@ function normEmoji(s) {
   s = String(s || '').trim();
   return [...s].length <= 8 ? s : '';
 }
+// /api/members/<id>/photo — энэ бол lazy линк (мод хөнгөн ачаалахын тулд state-д түр
+// тавьдаг). Үүнийг DB-д зураг болгож ХАДГАЛЖ БОЛОХГҮЙ — эс бөгөөс нүүр зураг өөртөө
+// заасан линк болж, карт дээр эвдэрсэн зураг гардаг.
+const LAZY_PHOTO_RE = /^\/api\/members\/\d+\/photo$/i;
 function normPhoto(s) {
   s = String(s || '').trim();
   if (!s) return '';
+  if (LAZY_PHOTO_RE.test(s)) return '';
   if (/^(https?:\/\/|\/)/i.test(s)) return s.slice(0, 500);
   if (/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(s) && s.length <= 600000) return s;
   throw httpErr(400, 'Зураг хүчингүй эсвэл хэт том (линк эсвэл жижиг зураг байх ёстой)');
@@ -1485,7 +1490,12 @@ async function api(req, env, url, path) {
         String(b.phone !== undefined ? b.phone : mem.phone).trim(),
         String(b.bio !== undefined ? b.bio : mem.bio || ''),
         String(b.honors !== undefined ? b.honors : mem.honors || '').trim().slice(0, 2000),
-        normPhoto(b.photo !== undefined ? b.photo : mem.photo || ''),
+        // Засах форм нь state-ийн lazy линкийг буцааж илгээдэг — тэр үед хадгалагдсан
+        // бодит зургийг хөндөхгүй.
+        (() => {
+          const raw = b.photo !== undefined ? String(b.photo || '') : String(mem.photo || '');
+          return LAZY_PHOTO_RE.test(raw) ? normPhoto(mem.photo || '') : normPhoto(raw);
+        })(),
         normDeath(b.death_date !== undefined ? b.death_date : mem.death_date || ''),
         normEmoji(b.emoji !== undefined ? b.emoji : mem.emoji || ''),
         id

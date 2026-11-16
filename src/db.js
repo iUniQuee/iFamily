@@ -153,6 +153,8 @@ export const MIGRATIONS = [
   "ALTER TABLE members ADD COLUMN honors TEXT DEFAULT ''",
   "ALTER TABLE users ADD COLUMN level_seen INTEGER DEFAULT NULL",
   "ALTER TABLE member_events ADD COLUMN photo TEXT DEFAULT ''",
+  // Нүүр зурагт lazy линк хадгалагдсан алдааг цэвэрлэнэ (эвдэрсэн зураг → энгийн дүрс)
+  "UPDATE members SET photo='' WHERE photo LIKE '/api/members/%/photo'",
   "DELETE FROM default_avatars WHERE slot='n_any'"
 ];
 
