@@ -283,8 +283,8 @@
         if (p === 'C') return isF ? 'Охин' : 'Хүү';
         if (p === 'S') return me.sex === 'f' ? 'Нөхөр' : 'Эхнэр';
       } else if (n === 2) {
-        if (p === 'F,F') return 'Өвөө';
-        if (p === 'F,M') return 'Эмээ';
+        if (p === 'F,F') return 'Авга өвөө'; // аавын аав
+        if (p === 'F,M') return 'Авга эмээ'; // аавын ээж
         if (p === 'M,F') return 'Нагац өвөө';
         if (p === 'M,M') return 'Нагац эмээ';
         if (p === 'C,C') return (mid.sex === 'm' ? 'Ач ' : mid.sex === 'f' ? 'Зээ ' : 'Ач/Зээ ') + (isF ? 'охин' : 'хүү');
@@ -374,7 +374,7 @@
         const mat = path[0] === 'M';
         const lastF = path[n - 1] === 'F';
         if (n === 1) return lastF ? 'Аав' : 'Ээж';
-        if (n === 2) return mat ? (lastF ? 'Нагац өвөө' : 'Нагац эмээ') : (lastF ? 'Өвөө' : 'Эмээ');
+        if (n === 2) return mat ? (lastF ? 'Нагац өвөө' : 'Нагац эмээ') : (lastF ? 'Авга өвөө' : 'Авга эмээ');
         if (n === 3) return cap1((mat ? 'Нагац ' : '') + (lastF ? 'элэнц өвөө' : 'элэнц эмээ'));
         if (n === 4) return cap1((mat ? 'Нагац ' : '') + (lastF ? 'хуланц өвөө' : 'хуланц эмээ'));
         return 'Дээд үе';
@@ -387,8 +387,9 @@
         }
         if (g === 2) {
           const gp = byId.get(ids[2]) || {};
-          // Өвөө/эмээгийн ах дүүг ӨВӨӨ/ЭМЭЭТЭЙ харьцуулна («Өвөөгийн дүү»)
-          return (gp.sex === 'f' ? 'Эмээгийн' : 'Өвөөгийн') + ' ' + sibWord(yrOf(gp), yrOf(tgt), isF);
+          // Өвөө/эмээгийн ах дүүг ӨВӨӨ/ЭМЭЭТЭЙ харьцуулна («Авга өвөөгийн дүү»)
+          const gpBase = cap1((path[0] === 'F' ? 'Авга ' : 'Нагац ') + (gp.sex === 'f' ? 'эмээ' : 'өвөө'));
+          return genitiveOf(gpBase) + ' ' + sibWord(yrOf(gp), yrOf(tgt), isF);
         }
         const anc = g <= 3 ? 'Элэнц өвөөгийн' : 'Хуланц өвөөгийн';
         return anc + ' ' + (isF ? 'эгч/дүү' : 'ах/дүү');
