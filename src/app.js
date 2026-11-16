@@ -606,7 +606,10 @@ async function remindersFor(ctx, page, past) {
       // Аавын нэр (эцгийн нэр) хамт илгээнэ — сануулгад «аавын нэр + нэр».
       // Аав нь бүртгэгдээгүй бол pat хоосон, зөвхөн нэр харагдана.
       const dad = fatherNameOf(x.id);
-      return { kind: 'b', id: x.id, name: x.name, clan: x.clan || '', father: dad, pat: dad ? genitiveName(dad) : '', birth_date: x.birth_date, date: x.birth_date.slice(0, 10), days: daysTo(t), key };
+      // Нас: тухайн төрсөн өдөр тохиох ЖИЛ − төрсөн он (жишээ: 2006-11-17 → 2026 онд 20)
+      const bYear = Number(x.birth_date.slice(0, 4));
+      const age = Number.isFinite(bYear) && bYear > 0 ? (t.getFullYear() - bYear) : null;
+      return { kind: 'b', id: x.id, name: x.name, clan: x.clan || '', father: dad, pat: dad ? genitiveName(dad) : '', birth_date: x.birth_date, date: x.birth_date.slice(0, 10), days: daysTo(t), key, age };
     });
   // ② Улсын баяр (тогтмол MM-DD) + билгийн тооллын баяр (жил бүр гар аргаар шинэчилнэ)
   const evts = [];
@@ -2518,6 +2521,12 @@ export async function sendDailyPush(env) {
       const d = pat.get(b.id);
       return d ? genitiveName(d) + ' ' + b.name : b.name;
     };
+    // Нас: энэ жилийн төрсөн өдрөөр (2026-11-17, 2006 онд төрсөн → 20)
+    const ageOf = (b) => {
+      const y = Number(String(b.birth_date || '').slice(0, 4));
+      const cur = Number(todayKey.slice(0, 4));
+      return Number.isFinite(y) && y > 0 && cur > y ? cur - y : null;
+    };
 
     // ② Өнөөдрийн баяр (тогтмол MM-DD + билгийн тоолол)
     const holidays = [];
@@ -2528,9 +2537,17 @@ export async function sendDailyPush(env) {
 
     const msgs = [];
     if (bdays.length === 1) {
-      msgs.push({ title: '🎂 Төрсөн өдөр', body: `Өнөөдөр ${fullName(bdays[0])}-н төрсөн өдөр! 🎂`, url: '/', tag: 'bday' });
+      const b = bdays[0], a = ageOf(b);
+      msgs.push({
+        title: '🎂 Төрсөн өдөр',
+        body: a != null
+          ? `Өнөөдөр ${fullName(b)} ${a} нас хүрч байна! Төрсөн өдрийн мэнд хүргэе! 🎂`
+          : `Өнөөдөр ${fullName(b)}-н төрсөн өдөр! 🎂`,
+        url: '/', tag: 'bday'
+      });
     } else if (bdays.length > 1) {
-      msgs.push({ title: '🎂 Төрсөн өдөр', body: `Өнөөдөр ${bdays.length} хүний төрсөн өдөр: ${bdays.map(fullName).join(', ')} 🎂`, url: '/', tag: 'bday' });
+      const parts = bdays.map(b => { const a = ageOf(b); return a != null ? `${fullName(b)} (${a} нас)` : fullName(b); });
+      msgs.push({ title: '🎂 Төрсөн өдөр', body: `Өнөөдөр ${bdays.length} хүний төрсөн өдөр: ${parts.join(', ')} 🎂`, url: '/', tag: 'bday' });
     }
     for (const h of holidays) {
       msgs.push({ title: DAILY_PUSH_TITLE, body: `Өнөөдөр ${h.name}! ${h.icon}`, url: '/', tag: 'holiday' });

@@ -2632,7 +2632,12 @@ function genitiveName(name) {
         const right = tb === 'past'
           ? agoText(it.days)
           : (it.days === 0 ? 'ӨНӨӨДӨР' : it.days + ' хоног');
-        return '<div class="list-row"><span class="grow">' + icon + ' ' + nm + '</span>' +
+        // Нас: зөвхөн төрсөн өдөрт (баяр дээр харуулахгүй)
+        const ageChip = (it.kind === 'b' && it.age != null && it.age > 0)
+          ? '<span style="font-size:11.5px;color:var(--muted);background:var(--bg2);border-radius:8px;padding:1px 6px;white-space:nowrap">' +
+            it.age + ' нас ' + (tb === 'past' ? 'хүрсэн' : 'хүрнэ') + '</span>'
+          : '';
+        return '<div class="list-row"><span class="grow">' + icon + ' ' + nm + ' ' + ageChip + '</span>' +
           '<span style="opacity:.7">' + escapeHtml(it.date || it.birth_date || '') + '</span>' +
           '<b>' + right + '</b></div>';
       }).join('') ||
