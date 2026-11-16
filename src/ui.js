@@ -65,9 +65,9 @@ html[data-theme="midnight"] {
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px;
   white-space: nowrap; color: #0F172A; letter-spacing: -.01em; }
-.brand-badge { width: 30px; height: 30px; border-radius: 10px; background: #ECFDF5; color: #059669;
-  display: grid; place-items: center; flex: 0 0 30px; }
-.brand-badge svg { width: 18px; height: 18px; }
+/* Навчин дүрсийн оронд аппын жинхэнэ алтан хүрээтэй эмблем (28×28) */
+.brand-emblem { width: 28px; height: 28px; border-radius: 50%; flex: 0 0 28px;
+  display: block; object-fit: cover; box-shadow: 0 0 0 1px rgba(4,120,87,.18); }
 /* Мэню: утсан дээр доошоо/дээшээ гуйхгүй — ХОЙШОО (хэвтээ) гүйлгэнэ */
 #topbtns {
   display: flex; gap: 6px; flex-wrap: nowrap; flex: 1; min-width: 0;
@@ -724,7 +724,8 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
   position: fixed; inset: 0; z-index: 9999;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px;
-  background: radial-gradient(120% 90% at 50% 16%, #3a2708 0%, #1b1206 55%, #0b0703 100%);
+  /* Гүн emerald-forest — алтан хүрээтэй модон эмблем тод харагдана */
+  background: radial-gradient(circle at center, #065F46 0%, #022C22 100%);
   color: #f4d99a;
   transition: opacity .35s ease;
 }
@@ -1244,7 +1245,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="splash"><img src="/icon-512.png" alt="iFamily"><div class="spt">iFamily</div><div class="spsub">Угийн мод</div><div class="sps"></div></div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var s=document.getElementById('splash');if(s){s.style.opacity='0';setTimeout(function(){s.remove()},350)}},450);setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove()},9000)});</script>
 <header id="top">
-  <div class="brand"><span class="brand-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></span><span>iFamily</span></div>
+  <div class="brand"><img class="brand-emblem" src="/icon-512.png" width="28" height="28" alt="iFamily" decoding="async"><span>iFamily</span></div>
   <div id="topbtns"></div>
   <div id="who"></div>
 </header>
@@ -1276,7 +1277,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=454"></script>
+<script src="/tree_client.js?v=455"></script>
 </body>
 </html>`;
 }
