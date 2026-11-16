@@ -580,7 +580,8 @@ const LUNAR_EVENTS = {
 };
 
 
-async function remindersFor(ctx, page) {
+async function remindersFor(ctx, page, past) {
+  // past=false → удахгүй болох (өнөөдрөөс хойш); past=true → сүүлийн 365 хоногт болж өнгөрсөн
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayKey = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -599,7 +600,9 @@ async function remindersFor(ctx, page) {
     .map(x => {
       const key = x.birth_date.slice(5, 10);
       let t = new Date(y, Number(key.slice(0, 2)) - 1, Number(key.slice(3, 5)));
-      if (t < today) t = new Date(y + 1, Number(key.slice(0, 2)) - 1, Number(key.slice(3, 5)));
+      // Удахгүй болох: өнөөдрөөс өмнө бол жилийг +1; өнгөрсөн: өнөөдрөөс хойш бол -1
+      if (!past && t < today) t = new Date(y + 1, Number(key.slice(0, 2)) - 1, Number(key.slice(3, 5)));
+      if (past && t > today) t = new Date(y - 1, Number(key.slice(0, 2)) - 1, Number(key.slice(3, 5)));
       // Аавын нэр (эцгийн нэр) хамт илгээнэ — сануулгад «аавын нэр + нэр».
       // Аав нь бүртгэгдээгүй бол pat хоосон, зөвхөн нэр харагдана.
       const dad = fatherNameOf(x.id);
@@ -609,27 +612,32 @@ async function remindersFor(ctx, page) {
   const evts = [];
   for (const h of HOLIDAYS) {
     let t = new Date(y, Number(h.md.slice(0, 2)) - 1, Number(h.md.slice(3, 5)));
-    if (t < today) t = new Date(y + 1, Number(h.md.slice(0, 2)) - 1, Number(h.md.slice(3, 5)));
+    if (!past && t < today) t = new Date(y + 1, Number(h.md.slice(0, 2)) - 1, Number(h.md.slice(3, 5)));
+    if (past && t > today) t = new Date(y - 1, Number(h.md.slice(0, 2)) - 1, Number(h.md.slice(3, 5)));
     evts.push({
       kind: 'h', name: h.name, icon: h.icon, days: daysTo(t),
       date: `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
     });
   }
-  for (const yy of [y, y + 1]) {
+  for (const yy of (past ? [y - 1, y] : [y, y + 1])) {
     for (const e of (LUNAR_EVENTS[yy] || [])) {
       const t = new Date(Number(e.d.slice(0, 4)), Number(e.d.slice(5, 7)) - 1, Number(e.d.slice(8, 10)));
-      if (t < today) continue;
-      evts.push({ kind: 'h', name: e.n, icon: '🌙', date: e.d, days: daysTo(t) });
+      const d = daysTo(t);
+      if (past ? d > 0 : d < 0) continue;
+      evts.push({ kind: 'h', name: e.n, icon: '🌙', date: e.d, days: d });
     }
   }
   // ③ Нэгдсэн эрэмбэ: хоногийн тоогоор; тэнцүү бол төрсөн өдөр нь эхэндээ
+  // Удахгүй болох: ойрхон нь эхэндээ (өсөх). Өнгөрсөн: хамгийн САЯХАН болсон нь
+  // эхэндээ (буурах: -1 хоног нь -15 хоногоос дээр).
   const items = [...bdays, ...evts]
-    .sort((a, b) => a.days - b.days ||
+    .filter(x => (past ? x.days < 0 : x.days >= 0))
+    .sort((a, b) => (past ? b.days - a.days : a.days - b.days) ||
       (a.kind === b.kind ? a.name.localeCompare(b.name, 'mn') : (a.kind === 'b' ? -1 : 1)));
   const size = 5;
   const pages = Math.max(1, Math.ceil(items.length / size));
   const p = Math.min(Math.max(1, page || 1), pages);
-  return { total: items.length, page: p, pages, today: todayKey, items: items.slice((p - 1) * size, p * size) };
+  return { total: items.length, page: p, pages, today: todayKey, past: !!past, items: items.slice((p - 1) * size, p * size) };
 }
 
 // ---------- цомог ----------
@@ -2250,7 +2258,8 @@ async function api(req, env, url, path) {
   if (path === '/api/reminders' && method === 'GET') {
     need();
     const ctx = await contextOf(user, env);
-    return json(await remindersFor(ctx, Number(url.searchParams.get('page')) || 1));
+    return json(await remindersFor(ctx, Number(url.searchParams.get('page')) || 1,
+      url.searchParams.get('past') === '1'));
   }
 
   // --- цомог ---

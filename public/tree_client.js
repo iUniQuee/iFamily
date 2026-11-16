@@ -2605,14 +2605,23 @@ function genitiveName(name) {
       await window.__pushOn();
     } finally {
       // Төлөвийг дахин зурна (ассан бол «Мэдэгдэл идэвхтэй ✅»)
-      if (typeof window.__reminders === 'function') window.__reminders(window.__remPage || 1);
+      if (typeof window.__reminders === 'function') window.__reminders(window.__remPage || 1, window.__remTab || 'up');
     }
   };
-  window.__reminders = async (page) => {
+  window.__reminders = async (page, tab) => {
     try {
+      // Таб: 'up' = удахгүй болох (анхдагч), 'past' = өнгөрсөн
+      const tb = (tab || window.__remTab) === 'past' ? 'past' : 'up';
+      window.__remTab = tb;
       window.__remPage = page || 1;
-      const j = await getJson('/api/reminders?page=' + (page || 1));
+      const j = await getJson('/api/reminders?page=' + (page || 1) + (tb === 'past' ? '&past=1' : ''));
       const ps = await pushDeviceState();
+      // «Өчигдөр», «2 хоногийн өмнө» … (зөвхөн өнгөрсөн таб)
+      const agoText = (d) => {
+        const n = Math.abs(d);
+        if (n === 1) return 'Өчигдөр';
+        return n + ' хоногийн өмнө';
+      };
       const rows = j.items.map(it => {
         const icon = it.kind === 'h' ? (it.icon || '🇲🇳') : '🎂';
         // Төрсөн өдрийн хүнийг ААВЫН НЭРЭЭР (эцгийн нэр) харуулна — ургийн овог биш.
@@ -2620,15 +2629,30 @@ function genitiveName(name) {
         const nm = (it.kind === 'b' && it.pat)
           ? '<span style="color:var(--muted)">' + escapeHtml(it.pat) + '</span> ' + escapeHtml(it.name)
           : escapeHtml(it.name);
+        const right = tb === 'past'
+          ? agoText(it.days)
+          : (it.days === 0 ? 'ӨНӨӨДӨР' : it.days + ' хоног');
         return '<div class="list-row"><span class="grow">' + icon + ' ' + nm + '</span>' +
           '<span style="opacity:.7">' + escapeHtml(it.date || it.birth_date || '') + '</span>' +
-          '<b>' + (it.days === 0 ? 'ӨНӨӨДӨР' : it.days + ' хоног') + '</b></div>';
+          '<b>' + right + '</b></div>';
       }).join('') ||
-        '<div style="color:var(--muted)">Тэмдэглэлт өдөр олдохгүй байна.</div>';
-      openModal('🎂 Төрсөн өдөр ба баярын сануулга', rows +
-        '<div class="pager"><button ' + (j.page <= 1 ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page - 1) + ')">← Өмнөх</button>' +
+        '<div style="color:var(--muted)">' + (tb === 'past'
+          ? 'Сүүлийн жилд болж өнгөрсөн тэмдэглэлт өдөр олдохгүй байна.'
+          : 'Тэмдэглэлт өдөр олдохгүй байна.') + '</div>';
+      // Цонхны гарчигны доорх 2 таб
+      const tabBtn = (k, label) => {
+        const on = k === tb;
+        return '<button onclick="window.__reminders(1,\'' + k + '\')" style="flex:1;font-size:13px;' +
+          (on
+            ? 'background:#2fae6a;border-color:#2fae6a;color:#fff;font-weight:800'
+            : 'background:transparent;color:var(--muted)') + '">' + label + '</button>';
+      };
+      const tabs = '<div style="display:flex;gap:6px;margin:0 0 10px">' +
+        tabBtn('up', 'Удахгүй болох') + tabBtn('past', 'Өнгөрсөн') + '</div>';
+      openModal('🎂 Төрсөн өдөр ба баярын сануулга', tabs + rows +
+        '<div class="pager"><button ' + (j.page <= 1 ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page - 1) + ',\'' + tb + '\')">← Өмнөх</button>' +
         '<span>' + j.page + ' / ' + j.pages + '</span>' +
-        '<button ' + (j.page >= j.pages ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page + 1) + ')">Дараагийн →</button></div>' +
+        '<button ' + (j.page >= j.pages ? 'disabled' : '') + ' onclick="window.__reminders(' + (j.page + 1) + ',\'' + tb + '\')">Дараагийн →</button></div>' +
         '<div style="font-size:11px;color:var(--muted);margin-top:6px">🇲🇳 — Бүх нийтээр амарч тэмдэглэдэг баярууд · 🎂 — Төрсөн өдөр. Насбарсан болон «зөвхөн төрсөн он» жагсаалтад орохгүй.</div>' +
         (!ps.on && ps.isIOS && !ps.standalone
           ? '<div style="font-size:11.5px;color:#a8691b;background:rgba(224,164,88,.14);border:1px solid rgba(224,164,88,.4);border-radius:10px;padding:7px 9px;margin-top:8px">📱 iPhone дээр мэдэгдэл авахын тулд Safari-аас <b>«Нүүр дэлгэцэд нэмэх»</b> хийсэн апп дотор нээнэ үү — энгийн таб дээр ирэхгүй.</div>'
