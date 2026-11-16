@@ -1104,8 +1104,9 @@
   };
   const navBtn = (icon, label, onclick, opts) => {
     opts = opts || {};
+    const tip = opts.title || label || '';
     return '<button class="nav-item' + (opts.on ? ' on' : '') + (opts.primary ? ' nav-primary' : '') + '"' +
-      (opts.title ? ' title="' + opts.title + '"' : '') +
+      (tip ? ' title="' + tip + '" aria-label="' + tip + '"' : '') +
       ' onclick="' + onclick + '">' + icon + (label ? '<span>' + label + '</span>' : '') + '</button>';
   };
   const logoutBtn = () => '<button class="nav-logout" title="Гарах" onclick="window.__logout()">' + NAVI.logout + '<span>Гарах</span></button>';
@@ -4113,7 +4114,8 @@ function genitiveName(name) {
       applyDesign();
       fullL = null; fullOpen = null; fullSeq++;
       render();
-      loadAvatars();
+      // Анхдагч дүрсүүд модны өгөгдлөөс хамааралгүй тул энд дахин дуудахгүй
+      // (дүрс солих үйлдлүүд loadAvatars-ыг өөрсдөө дуудна) — давхар хүсэлт хэмнэнэ.
       if (focus == null) loadFullLayout();   // дахин ачаалахад ч ҮНДСЭН МОД
     } catch (e) { toast(e.message); }
   }
@@ -4169,14 +4171,25 @@ function genitiveName(name) {
   // Нүүр хуудсанд: түвшин ахсан бол нэг удаагийн баяр хүргэлт
   if (S.viewer && S.viewer.member_id) setTimeout(() => { levelUpCheck(); }, 900);
   // ---------- «Холболт хүлээж буй» — автомат статус ----------
-  // 5 секунд тутам + таб дахин фокуслох/харагдах бүрд хөнгөн /api/my-status
-  // дуудна. Админ зөвшөөрмөгц баяр хүргэж, гар аргаар reload хийлгүй
-  // шууд үндсэн мод руу (өөрийн карт дээр) шилжинэ.
+  // 30 секунд тутам, ЗӨВХӨН хэрэглэгч «Холболт хүлээж буй» дэлгэцээ нээлттэй
+  // харж байгаа үед л хөнгөн /api/my-status дуудна. Таб нуугдсан
+  // (document.visibilityState === 'hidden') үед poll БҮРЭН зогсоно; батлагдсаны
+  // дараа (үндсэн мод дээр) хойноо дуудахгүй. Ингэснээр өдрийн 10,000
+  // хүсэлтийн хязгаарт зарцуулагдах дуудлага хэд дахин багасна.
   let statusTimer = null, statusBusy = false, statusDone = false;
   function stopStatusPoll() { if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } }
+  // Poll хийх нөхцөл: хүлээж буй дэлгэц байгаа, нуугдаагүй, таб харагдаж байгаа
+  function statusPollNeeded() {
+    if (statusDone || !S.viewer || !S.awaiting) return false;
+    if (document.visibilityState === 'hidden') return false;
+    const w = $('waiting');
+    return !!w && !w.classList.contains('hidden');
+  }
   async function checkStatus() {
     if (statusDone || statusBusy) return;
     if (!S.viewer || !S.awaiting) { stopStatusPoll(); return; }
+    // Хэрэглэгч хүлээж буй дэлгэцээ хаасан (эсвэл өөр газар шилжсэн) бол дуудахгүй
+    if (!statusPollNeeded()) { if (document.visibilityState === 'hidden') stopStatusPoll(); return; }
     statusBusy = true;
     try {
       const j = await getJson('/api/my-status');
@@ -4195,11 +4208,13 @@ function genitiveName(name) {
   }
   function startStatusPoll() {
     stopStatusPoll();
-    if (!S.viewer || !S.awaiting) return;
-    statusTimer = setInterval(checkStatus, 5000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkStatus(); });
-    window.addEventListener('focus', checkStatus);
+    if (!statusPollNeeded()) return;      // үндсэн мод дээр/таб нуугдсан үед interval үүсгэхгүй
+    statusTimer = setInterval(checkStatus, 30000);
   }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { stopStatusPoll(); return; }  // бүрэн зогсоно
+    if (statusPollNeeded()) { startStatusPoll(); checkStatus(); }             // буцаж ирэхэд нэг шалгана
+  });
   startStatusPoll();
   window.addEventListener('resize', () => applyView());
 })();

@@ -184,11 +184,22 @@ async function buildState(user, env, opts = {}) {
     }
   }
   // Цомгийн эхний зурагтай гишүүд — нүүр зураггүй бол түүгээр харуулна
-  const albumFirst = new Set();
+  // member_id → цомгийн эхний зургийн id (нүүр зургийн «хувилбар» болж ажиллана)
+  const albumFirst = new Map();
   try {
     const rows = await all(env, 'SELECT member_id, MIN(id) AS pid FROM member_photos GROUP BY member_id');
-    for (const r of rows) albumFirst.add(r.member_id);
+    for (const r of rows) albumFirst.set(Number(r.member_id), Number(r.pid) || 0);
   } catch (e) { /* member_photos хүснэгт хоосон үед алгасна */ }
+  // Зургийн URL-ийн хувилбар (?v=): зураг солигдмогц линк өөрчлөгдөж, браузерын
+  // кэш (1 өдөр) хуучин зургийг гацаахгүй. Жижиг хэш — бүтэн base64-ыг уншихгүй.
+  function photoVer(raw, albumPid) {
+    const s = String(raw || '');
+    if (!s) return 'a' + (albumPid || 0);
+    const t = s.length > 220 ? s.slice(0, 110) + '|' + s.slice(-110) + '|' + s.length : s;
+    let h = 5381;
+    for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+    return 'p' + h.toString(36);
+  }
   const members = ctx.members.filter(m => vis.has(m.id)).map(m => {
     const x = sanitize(m, ctx.isAdmin || bio.has(m.id), !opts.publicView && canEdit(user, m.id, ctx.trMap));
     // Зурагтай (base64) гишүүдийн зургийг үндсэн state-д БҮТНЭЭР хийхгүй —
@@ -197,13 +208,15 @@ async function buildState(user, env, opts = {}) {
     // DB-д «lazy» линк хадгалагдсан бол (хуучин бичлэг) эвдэрсэн зураг гарахаас сэргийлж
     // цомгийн эхний зураг руу шилжүүлнэ
     const storedLazy = /^\/api\/members\/\d+\/photo$/i.test(String(m.photo || ''));
+    const lazyUrl = '/api/members/' + m.id + '/photo?v=' +
+      photoVer(storedLazy ? '' : m.photo, albumFirst.get(m.id));
     if (!x.photo || storedLazy) {
-      x.photo = albumFirst.has(m.id) ? '/api/members/' + m.id + '/photo' : null;
+      x.photo = albumFirst.has(m.id) ? lazyUrl : null;
     } else if (!opts.publicView && /^data:image\//i.test(String(m.photo || ''))) {
-      x.photo = '/api/members/' + m.id + '/photo';
+      x.photo = lazyUrl;
     }
     // Нүүр зураг байхгүй ч цомогт зурагтай бол эхний зургийг нүүр болгож харуулна
-    if (!x.photo && albumFirst.has(m.id)) x.photo = '/api/members/' + m.id + '/photo';
+    if (!x.photo && albumFirst.has(m.id)) x.photo = lazyUrl;
     return x;
   });
   const links = [];
@@ -1466,6 +1479,14 @@ async function api(req, env, url, path) {
       const ctx = await contextOf(user, env);
       if (!ctx.vis.has(id)) throw httpErr(404, 'Зураг олдохгүй');
     }
+    // Хувилбар (?v=) өөрчлөгдөөгүй бол 304 — дахин татахгүй, дуудлагын хэмжээ хамгийн бага
+    const pver = url.searchParams.get('v') || '0';
+    const petag = '"' + pver + '"';
+    if (req.headers.get('if-none-match') === petag) {
+      return new Response(null, { status: 304, headers: {
+        'cache-control': 'public, max-age=86400', 'etag': petag
+      } });
+    }
     let src = String(mem.photo || '');
     if (LAZY_PHOTO_RE.test(src)) src = ''; // өөрөө рүүгээ заасан линк — эвдэрсэн зураг
     // Нүүр зураг тохируулаагүй бол цомгийн хамгийн эхний зургийг харуулна
@@ -1482,8 +1503,10 @@ async function api(req, env, url, path) {
     const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
     return new Response(bytes, { headers: {
       'content-type': m[1],
-      // Нүүр зураг солигдмогц шууд шинэ зураг харагдана (хуучин кэш гацахгүй)
-      'cache-control': 'private, max-age=0, must-revalidate',
+      // Браузер 1 өдөр локал кэшээс авна — хуудас нээх бүрт дахин татахгүй.
+      // Зураг солигдвол state дэх ?v= хувилбар өөрчлөгдөж, шинэ линк татагдана.
+      'cache-control': 'public, max-age=86400',
+      'etag': petag,
       'x-content-type-options': 'nosniff'
     } });
   }

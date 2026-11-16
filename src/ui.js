@@ -745,8 +745,14 @@ html[data-card="best"] .card.sel .box, html[data-card="best"] .card.focus .box {
   #top { height: 48px; padding: 0 8px; gap: 6px; }
   .brand { font-size: 13.5px; }
   #who .who-name { display: none; }
-  #topbtns { gap: 5px; }
+  /* Утсан дээр мэнюгийн ШИРЭЭГ нууж зөвхөн дүрс харуулна — 5 зүйл бүгд
+     багтаж, хажуу тийш гүйлгэх шаардлагагүй (нэр нь title/aria-label-д байна). */
+  #topbtns { gap: 2px; }
   #topbtns button, #topbtns .btn, #topbtns select { padding: 5px 8px; font-size: 12.5px; }
+  #topbtns .nav-item { padding: 8px; gap: 0; }
+  #topbtns .nav-item > span { display: none; }
+  .nav-logout { padding: 8px; gap: 0; }
+  .nav-logout > span { display: none; }
   .center { inset: 48px 0 0 0; }
   #main { top: 48px; height: calc(100vh - 48px); }
   #panel {
@@ -1277,7 +1283,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=455"></script>
+<script src="/tree_client.js?v=457"></script>
 </body>
 </html>`;
 }
