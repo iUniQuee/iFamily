@@ -152,6 +152,7 @@ export const MIGRATIONS = [
   "ALTER TABLE members ADD COLUMN emoji TEXT DEFAULT ''",
   "ALTER TABLE members ADD COLUMN honors TEXT DEFAULT ''",
   "ALTER TABLE users ADD COLUMN level_seen INTEGER DEFAULT NULL",
+  "ALTER TABLE member_events ADD COLUMN photo TEXT DEFAULT ''",
   "DELETE FROM default_avatars WHERE slot='n_any'"
 ];
 

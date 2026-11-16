@@ -1452,7 +1452,7 @@ async function api(req, env, url, path) {
       if (!mem || !ctx.vis.has(id)) throw httpErr(404, 'Гишүүн олдохгүй');
       const hasBio = ctx.isAdmin || ctx.bio.has(id);
       const photos = await all(env, 'SELECT id, url, created_at FROM member_photos WHERE member_id=? ORDER BY id', id);
-      const events = await all(env, 'SELECT id, event_date, title FROM member_events WHERE member_id=? ORDER BY event_date, id', id);
+      const events = await all(env, 'SELECT id, event_date, title, photo FROM member_events WHERE member_id=? ORDER BY event_date, id', id);
       return json({
         member: sanitize(mem, hasBio, canEdit(user, id, ctx.trMap)),
         relations: relationsOf(ctx, id),
@@ -2395,8 +2395,10 @@ async function api(req, env, url, path) {
     if (!title) throw httpErr(400, 'Үйл явдлын нэр шаардлагатай');
     const ecnt = await get(env, 'SELECT COUNT(*) AS c FROM member_events WHERE member_id=?', id);
     if (Number((ecnt && ecnt.c) || 0) >= 4) throw httpErr(400, 'Үйл явалын дээд тал (4) хүрсэн байна');
-    await insert(env, 'INSERT INTO member_events(member_id, event_date, title, created_by) VALUES(?,?,?,?)',
-      id, date, title.slice(0, 300), user.id);
+    // Зураг сонголтоор — том зургийг клиент тал дээр жижигрүүлж илгээдэг
+    const photo = b.photo ? normPhoto(b.photo) : '';
+    await insert(env, 'INSERT INTO member_events(member_id, event_date, title, photo, created_by) VALUES(?,?,?,?,?)',
+      id, date, title.slice(0, 300), photo, user.id);
     const gotE = await scoreNewEvent(env, user, id);
     await audit(env, user, 'member_event', `${mem.name} (#${id}) ${date}`);
     return json({ ok: true, points: gotE });

@@ -1409,7 +1409,11 @@ function genitiveName(name) {
         '</div>';
       if (xev.length) {
         h += '<div class="rel-h">📅 Огноотой үйл явдал (' + xev.length + '/4)</div>' +
-          xev.map(ev => '<div class="kv">📌 <b>' + escapeHtml(ev.event_date) + '</b> ' + escapeHtml(ev.title) + '</div>').join('');
+          xev.map(ev => '<div class="kv">📌 <b>' + escapeHtml(ev.event_date) + '</b> ' + escapeHtml(ev.title) +
+            (ev.photo
+              ? '<div style="margin-top:6px"><img src="' + escapeHtml(ev.photo) + '" alt="" onclick="window.__evView(this.src)" ' +
+                'style="width:96px;height:96px;object-fit:cover;border-radius:10px;display:block;cursor:zoom-in"></div>'
+              : '') + '</div>').join('');
       }
     }
     h += '<div class="rel-h">Эцэг / Эх</div><div class="rel-p">' + relList(rel.parents, 'parent') + '</div>';
@@ -2215,33 +2219,67 @@ function genitiveName(name) {
       inp.value = '';
     } catch (e) { toast(e.message); }
   };
-  function resizePhoto(file) {
-    return new Promise((res, rej) => {
-      if (!/^image\//.test(file.type)) return rej(new Error('Зураг файл биш байна'));
-      if (file.size > 10 * 1024 * 1024) return rej(new Error('Файл хэт том (10MB хүртэл)'));
-      const fr = new FileReader();
-      fr.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          const max = 640;
-          let w = img.width, h = img.height;
-          if (w > max || h > max) {
-            const k = Math.min(max / w, max / h);
-            w = Math.round(w * k); h = Math.round(h * k);
-          }
-          const cv = document.createElement('canvas');
-          cv.width = w; cv.height = h;
-          cv.getContext('2d').drawImage(img, 0, 0, w, h);
-          const out = cv.toDataURL('image/jpeg', 0.82);
-          if (out.length > 600000) return rej(new Error('Зураг хэт том — жижигхэн зураг сонгоно уу'));
-          res(out);
-        };
-        img.onerror = () => rej(new Error('Зураг унших алдаа'));
-        img.src = fr.result;
-      };
-      fr.onerror = () => rej(new Error('Файл унших алдаа'));
-      fr.readAsDataURL(file);
-    });
+  // Утасны камераар авсан ТОМ зургийг ч хүлээж авна:
+  //  • эх файл 40MB хүртэл (өмнө 10MB-аас дээш бол шууд алдаа гардаг байсан)
+  //  • EXIF эргэлтийг зөв тооцно (createImageBitmap → from-image)
+  //  • 1280px хүртэл буулгаж, багтахгүй бол чанарыг шатлаж бууруулна
+  //  • HEIC зэрэг хөтчөөр нээгдэхгүй формат дээр ойлгомжтой алдаа өгнө
+  async function resizePhoto(file, opts) {
+    const MAX_IN = 40 * 1024 * 1024;   // эх файлын дээд хэмжээ
+    const MAX_OUT = 600000;            // серверийн хүлээх дээд хэмжээ (тэмдэгт)
+    const MAX_SIDE = (opts && opts.max) || 1280;
+    if (!file) throw new Error('Зураг сонгоогүй байна');
+    const isImg = /^image\//i.test(file.type || '') ||
+      /\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i.test(file.name || '');
+    if (!isImg) throw new Error('Зураг файл биш байна');
+    if (file.size > MAX_IN) {
+      throw new Error('Файл хэт том (' + Math.round(file.size / 1048576) + 'MB) — 40MB хүртэл зөвшөөрнө');
+    }
+    let src = null, w = 0, h = 0;
+    // ① Орчин үеийн арга: зургийг шууд декодож, эргэлтийг зөв тооцно
+    try {
+      if (typeof createImageBitmap === 'function') {
+        src = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        w = src.width || (src.naturalWidth || 0);
+        h = src.height || (src.naturalHeight || 0);
+      }
+    } catch (e) { src = null; }
+    // ② Нөөц арга: <img> — хуучин Safari зэрэгт
+    if (!src || !w || !h) {
+      const dataUrl = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = () => rej(new Error('Файл унших алдаа'));
+        fr.readAsDataURL(file);
+      });
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('Энэ зургийг хөтчөөр нээх боломжгүй (ж: iPhone-ы HEIC). ' +
+          '«Хамгийн нийцтэй» (JPEG) болгож эсвэл камераас дахин авна уу.'));
+        i.src = dataUrl;
+      });
+      src = img; w = img.naturalWidth || img.width; h = img.naturalHeight || img.height;
+    }
+    if (!w || !h) throw new Error('Зургийн хэмжээ тодорхойгүй байна');
+    // ③ Буулгах + чанар шатлаж, серверийн хязгаарт багтаана
+    let side = MAX_SIDE, q = 0.86, out = '';
+    for (let i = 0; i < 7; i++) {
+      const k = Math.min(1, side / Math.max(w, h));
+      const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+      const cv = document.createElement('canvas');
+      cv.width = cw; cv.height = ch;
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch);   // тунгалаг PNG → цагаан
+      cx.drawImage(src, 0, 0, cw, ch);
+      out = cv.toDataURL('image/jpeg', q);
+      if (out.length <= MAX_OUT) break;
+      if (q > 0.55) q -= 0.12;            // эхлээд чанар
+      else side = Math.round(side * 0.78); // дараа нь хэмжээ
+    }
+    if (src && src.close) { try { src.close(); } catch (e) {} }
+    if (!out || out.length > MAX_OUT) throw new Error('Зураг багтахгүй байна — өөр зураг сонгоно уу');
+    return out;
   }
   // Огноог ГАРААС бичсэнээр хүлээж авах (native date picker утсан дээр тохиромжгүй):
   //   1992 · 1992-06 · 1992-06-07 · 1992.6.7 · 07.06.1992 · 19920607
@@ -3027,22 +3065,54 @@ function genitiveName(name) {
     } catch (e) { toast(e.message); }
   };
 
+  let evPhotoUrl = '';
   window.__addMemEvent = (id) => {
+    evPhotoUrl = '';
     openModal('📅 Огноотой үйл явдал нэмэх',
       '<div style="font-size:12px;color:var(--muted)">Нэг хүний хамгийн ихдээ <b>4</b> үйл явдал. Тус бүр <b>+5 оноо</b>.</div>' +
       '<label class="f">Огноо</label><input type="date" id="me_date">' +
-      '<label class="f">Үйл явдлын нэр</label><input type="text" id="me_title" placeholder="Жишээ: Ахын хурим">',
+      '<label class="f">Үйл явдлын нэр</label><input type="text" id="me_title" placeholder="Жишээ: Ахын хурим">' +
+      '<label class="f">Зураг (сонголтоор)</label>' +
+      '<button type="button" onclick="document.getElementById(\'me_file\').click()">📷 Зураг оруулах</button>' +
+      '<input type="file" id="me_file" accept="image/*" style="display:none">' +
+      '<div class="photo-prev" id="me_prev"></div>',
       '<button onclick="window.__closeModal()">Цуцлах</button>' +
       '<button class="primary" onclick="window.__saveMemEvent(' + id + ')">＋ Нэмэх</button>');
+    const f = $('me_file');
+    if (f) f.onchange = async () => {
+      try {
+        if (!f.files || !f.files[0]) return;
+        const pv = $('me_prev');
+        if (pv) pv.innerHTML = '<span style="font-size:12px;color:var(--muted)">Зураг бэлтгэж байна…</span>';
+        evPhotoUrl = await resizePhoto(f.files[0]);
+        if (pv) pv.innerHTML = '<img src="' + evPhotoUrl + '" alt="" style="max-width:130px;max-height:130px;border-radius:10px;object-fit:cover">' +
+          ' <button type="button" onclick="window.__evPhotoClear()" style="font-size:12px">✕</button>';
+        f.value = '';
+      } catch (e) { evPhotoUrl = ''; if ($('me_prev')) $('me_prev').innerHTML = ''; toast(e.message); }
+    };
   };
+  window.__evPhotoClear = () => { evPhotoUrl = ''; if ($('me_prev')) $('me_prev').innerHTML = ''; };
   window.__saveMemEvent = async (id) => {
     try {
       const r = await post('/api/members/' + id + '/events',
-        { date: $('me_date').value, title: $('me_title').value });
+        { date: $('me_date').value, title: $('me_title').value, photo: evPhotoUrl || '' });
+      evPhotoUrl = '';
       window.__closeModal();
       toast(r.points ? 'Нэмэгдлээ ✓ +' + r.points + ' оноо' : 'Нэмэгдлээ ✓');
       window.__detail(id);
     } catch (e) { toast(e.message); }
+  };
+  // Үйл явдлын зургийг томоор үзэх
+  window.__evView = (src) => {
+    const old = document.getElementById('evv'); if (old) old.remove();
+    const d = document.createElement('div');
+    d.id = 'evv';
+    d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(12,10,8,.94);display:flex;align-items:center;justify-content:center;padding:12px';
+    d.innerHTML = '<img src="' + src + '" alt="" style="max-width:100%;max-height:88vh;border-radius:12px;object-fit:contain">' +
+      '<button style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:9px 13px;font-size:15px">✕</button>';
+    d.querySelector('button').onclick = () => d.remove();
+    d.onclick = (ev) => { if (ev.target === d) d.remove(); };
+    document.body.appendChild(d);
   };
 
   // ---------- дизайн ----------
