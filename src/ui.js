@@ -221,6 +221,65 @@ html[data-card="best"] .card.focus .box { outline: 1px solid #2fae6a; outline-of
 }
 .center h1 { font-size: 22px; margin: 0; color: var(--accent); }
 .center p { color: var(--muted); max-width: 420px; }
+/* ---------- Холболт хүлээж буй ---------- */
+#waiting { background: #F8FAFC; gap: 0; z-index: 6; }
+.waitcard { width: 100%; max-width: 448px; background: #fff; border: 1px solid #EEF2F7;
+  border-radius: 16px; padding: 30px 24px 22px;
+  box-shadow: 0 12px 30px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.04); }
+.waitcard h1 { font-size: 20px; margin: 0; color: #0F172A; }
+.waitcard p { color: #64748B; font-size: 13px; line-height: 1.6; margin: 10px auto 0; max-width: 366px; }
+.wbadge { width: 64px; height: 64px; border-radius: 50%; background: #ECFDF5; color: #059669;
+  display: grid; place-items: center; margin: 0 auto 16px; }
+.wbadge svg { width: 28px; height: 28px; }
+#lr_status { margin-top: 14px; font-size: 12px; color: #64748B; }
+.wpill { display: inline-block; max-width: 100%; background: #F8FAFC; border: 1px solid #E2E8F0;
+  border-radius: 999px; padding: 6px 12px; font-size: 11.5px; color: #475569;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 18px auto 0; padding: 12px 18px; border-radius: 12px; border: 1px solid #059669;
+  background: #059669; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: background .15s, border-color .15s; }
+.wbtn:hover { background: #047857; border-color: #047857; color: #fff; }
+.wauto { display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 14px; font-size: 11.5px; color: #94A3B8; }
+.wdot { width: 6px; height: 6px; border-radius: 50%; background: #10B981;
+  animation: wpulse 1.6s ease-in-out infinite; }
+@keyframes wpulse { 0%,100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+
+/* ---------- Карт холбох хүсэлт ---------- */
+.lr-search { position: relative; margin: 2px 0 10px; }
+.lr-search .sic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: #94A3B8; pointer-events: none; display: grid; place-items: center; }
+#lr_q { width: 100%; padding: 10px 12px 10px 35px; border: 1px solid #E2E8F0; border-radius: 10px;
+  background: #fff; font-size: 13.5px; color: #0F172A; font-family: inherit; outline: none;
+  box-sizing: border-box; }
+#lr_q:focus { border-color: #94A3B8; box-shadow: 0 0 0 3px rgba(148,163,184,.15); }
+#lr_q::placeholder { color: #94A3B8; }
+.lr-list { max-height: 44vh; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px;
+  scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+.lr-list::-webkit-scrollbar { width: 6px; height: 6px; }
+.lr-list::-webkit-scrollbar-track { background: transparent; }
+.lr-list::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 999px; }
+.lr-list::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+.lr-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid transparent; cursor: pointer; }
+.lr-item:hover { background: #F8FAFC; }
+.lr-item.on { background: #ECFDF5; border-color: #A7F3D0; }
+.lr-av { position: relative; width: 32px; height: 32px; border-radius: 50%; flex: 0 0 32px;
+  overflow: hidden; background: #F1F5F9; color: #64748B; display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 700; }
+.lr-av::before { content: attr(data-i); }
+.lr-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lr-nm { flex: 1; min-width: 0; }
+.lr-nm b { display: block; font-size: 13.5px; font-weight: 650; color: #0F172A;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr-nm span { display: block; font-size: 11.5px; color: #94A3B8;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr-chk { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; color: #059669; background: #D1FAE5; opacity: 0;
+  transition: opacity .12s; }
+.lr-item.on .lr-chk { opacity: 1; }
+.lr-empty { padding: 18px 10px; text-align: center; font-size: 12.5px; color: #94A3B8; }
 #modalroot {
   position: fixed; inset: 0; background: rgba(10,15,25,.5); z-index: 100;
   display: flex; align-items: center; justify-content: center; padding: 16px;
@@ -1144,10 +1203,14 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
     <button class="primary" id="firstBtn">＋ Анхны гишүүн нэмэх</button>
   </div>
   <div id="waiting" class="center hidden">
-    <h1>Холболт хүлээж буй</h1>
-    <p>Таны утасны дугаараар модтой холбогдсон карт олдоогүй байна.<br>Мод дээрх бүх нэрээс <b>өөрийн нэрээ</b> сонгон «Карт холбох хүсэлт» илгээнэ үү.</p>
-    <button class="primary" onclick="window.__linkReq()">📇 Карт холбох хүсэлт илгээх</button>
-    <div id="lr_status" style="margin-top:12px;font-size:13px"></div>
+    <div class="waitcard">
+      <div class="wbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></div>
+      <h1>Холболт хүлээж буй</h1>
+      <p>Таны утасны дугаараар модтой холбогдсон карт олдоогүй байна. Мод дээрх бүх нэрээс <b>өөрийн нэрээ</b> сонгон «Карт холбох хүсэлт» илгээнэ үү.</p>
+      <div id="lr_status"></div>
+      <button class="wbtn" onclick="window.__linkReq()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>Карт холбох хүсэлт илгээх</button>
+      <div class="wauto"><span class="wdot"></span>Статусыг 5 секунд тутам автоматаар шалгаж байна…</div>
+    </div>
   </div>
 </main>
 <aside id="panel" class="hidden"></aside>
@@ -1155,7 +1218,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=445"></script>
+<script src="/tree_client.js?v=446"></script>
 </body>
 </html>`;
 }

@@ -1092,8 +1092,9 @@
       tb.innerHTML = h;
       who.textContent = (S.viewer.name || '') + (S.pending_req ? ' · хүсэлт илгээсэн' : '');
       const st = $('lr_status');
-      if (st) st.textContent = S.pending_req
-        ? '⏳ Таны хүсэлт хүлээгдэж байна: «' + (S.pending_req.card_name || ('#' + S.pending_req.member_id)) + '» — ' + String(S.pending_req.created_at || '').slice(5, 16)
+      // Хүсэлт илгээсэн бол аль карт руу, хэзээ илгээснийг pill хэлбэрээр харуулна
+      if (st) st.innerHTML = S.pending_req
+        ? '<span class="wpill">⏳ «' + escapeHtml(S.pending_req.card_name || ('#' + S.pending_req.member_id)) + '» — ' + escapeHtml(String(S.pending_req.created_at || '').slice(5, 16)) + ' · админы зөвшөөрлийг хүлээж байна</span>'
         : '';
       return;
     }
@@ -3856,18 +3857,21 @@ function genitiveName(name) {
   };
 
   // --- карт холбох хүсэлт (бүртгэлтэй, картгүй хэрэглэгч) ---
+  const LRI = {
+    search: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>'
+  };
   window.__linkReq = async () => {
     try {
       window.__lrSel = null;
       const pend = S.pending_req;
       const j = await getJson('/api/link-requests/members');
       window.__lrItems = j.members || [];
-      openModal('📇 Карт холбох хүсэлт',
-        (pend ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⏳ Таны одоогийн хүсэлт: <b>«' + escapeHtml(pend.card_name || ('#' + pend.member_id)) + '»</b> (' + escapeHtml(String(pend.created_at || '').slice(5, 16)) + ') — өөрчлөх бол шинээр сонгоно уу.</div>' : '') +
-        '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Мод дээрх бүх нэрээс <b>өөрийн нэрээ</b> олж сонгоод хүсэлт илгээнэ үү — админ зөвшөөрсний дараа таны карт модонд гарна.</div>' +
-        '<label class="f">Хайх</label>' +
-        '<input type="text" id="lr_q" oninput="window.__lrQ()" placeholder="Нэрээр хайх">' +
-        '<div class="picker" id="lr_list" style="max-height:44vh"></div>',
+      openModal('Карт холбох хүсэлт',
+        (pend ? '<div style="font-size:12px;color:#64748B;margin-bottom:8px">⏳ Таны одоогийн хүсэлт: <b>«' + escapeHtml(pend.card_name || ('#' + pend.member_id)) + '»</b> (' + escapeHtml(String(pend.created_at || '').slice(5, 16)) + ') — өөрчлөх бол шинээр сонгоно уу.</div>' : '') +
+        '<div style="font-size:12px;color:#64748B;margin-bottom:10px;line-height:1.5">Мод дээрх бүх нэрээс <b>өөрийн нэрээ</b> олж сонгоод хүсэлт илгээнэ үү — админ зөвшөөрсний дараа таны карт модонд гарна.</div>' +
+        '<div class="lr-search"><span class="sic">' + LRI.search + '</span>' +
+        '<input type="text" id="lr_q" oninput="window.__lrQ()" placeholder="Нэрээр хайх" autocomplete="off"></div>' +
+        '<div class="lr-list" id="lr_list"></div>',
         '<button onclick="window.__closeModal()">Цуцлах</button>' +
         '<button class="primary" onclick="window.__lrSend()">Карт холбох хүсэлт илгээх</button>');
       window.__lrQ();
@@ -3876,13 +3880,20 @@ function genitiveName(name) {
   window.__lrQ = () => {
     const el = $('lr_list'); if (!el) return;
     const q = (($('lr_q') || {}).value || '').toLowerCase().trim();
-    const items = (window.__lrItems || []).filter(x => !q || (String(x.name) + ' ' + (x.pat || '')).toLowerCase().includes(q));
+    const items = (window.__lrItems || []).filter(x => !q ||
+      (String(x.name) + ' ' + (x.pat || '') + ' ' + (x.birth_year || '')).toLowerCase().includes(q));
+    if (!items.length) { el.innerHTML = '<div class="lr-empty">Илэрц олдсонгүй</div>'; return; }
     el.innerHTML = items.map(x => {
       const yr = x.birth_date ? String(x.birth_date).slice(0, 4) : (x.birth_year || '');
-      return '<div class="' + (window.__lrSel === x.id ? 'on' : '') + '" onclick="window.__lrPick(' + x.id + ')">' +
-        '<span style="flex:1">' + (x.pat ? '<span style="color:var(--muted)">' + escapeHtml(x.pat) + ' </span>' : '') + escapeHtml(x.name) + '</span>' +
-        '<span style="opacity:.6">' + escapeHtml(String(yr)) + '</span></div>';
-    }).join('') || '<div style="opacity:.6">Олдохгүй</div>';
+      const initial = escapeHtml((String(x.name || '?').trim().charAt(0) || '?').toUpperCase());
+      const av = '<span class="lr-av" data-i="' + initial + '">' +
+        (x.photo ? '<img src="/api/members/' + x.id + '/photo" alt="" loading="lazy" onerror="this.remove()">' : '') + '</span>';
+      const sub = [x.pat ? escapeHtml(x.pat) : '', yr ? escapeHtml(String(yr)) : ''].filter(Boolean).join(' · ');
+      return '<div class="lr-item' + (window.__lrSel === x.id ? ' on' : '') + '" onclick="window.__lrPick(' + x.id + ')">' +
+        av +
+        '<span class="lr-nm"><b>' + escapeHtml(x.name) + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</span>' +
+        '<span class="lr-chk">✓</span></div>';
+    }).join('');
   };
   window.__lrPick = (id) => { window.__lrSel = id; window.__lrQ(); };
   window.__lrSend = async () => {
@@ -4080,5 +4091,38 @@ function genitiveName(name) {
   }
   // Нүүр хуудсанд: түвшин ахсан бол нэг удаагийн баяр хүргэлт
   if (S.viewer && S.viewer.member_id) setTimeout(() => { levelUpCheck(); }, 900);
+  // ---------- «Холболт хүлээж буй» — автомат статус ----------
+  // 5 секунд тутам + таб дахин фокуслох/харагдах бүрд хөнгөн /api/my-status
+  // дуудна. Админ зөвшөөрмөгц баяр хүргэж, гар аргаар reload хийлгүй
+  // шууд үндсэн мод руу (өөрийн карт дээр) шилжинэ.
+  let statusTimer = null, statusBusy = false, statusDone = false;
+  function stopStatusPoll() { if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } }
+  async function checkStatus() {
+    if (statusDone || statusBusy) return;
+    if (!S.viewer || !S.awaiting) { stopStatusPoll(); return; }
+    statusBusy = true;
+    try {
+      const j = await getJson('/api/my-status');
+      if (j && j.member_id) {
+        statusDone = true;
+        stopStatusPoll();
+        const w = $('waiting'); if (w) w.classList.add('hidden');
+        toast('Таны хүсэлт баталгаажлаа!');
+        await refresh();
+        await window.__mainTree(j.member_id);
+        return;
+      }
+      if (j && !j.pending && S.pending_req) { S.pending_req = null; renderTop(); }
+    } catch (e) { /* сүлжээний түр алдааг алгасна — дараагийн циклд дахин оролдоно */ }
+    finally { statusBusy = false; }
+  }
+  function startStatusPoll() {
+    stopStatusPoll();
+    if (!S.viewer || !S.awaiting) return;
+    statusTimer = setInterval(checkStatus, 5000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkStatus(); });
+    window.addEventListener('focus', checkStatus);
+  }
+  startStatusPoll();
   window.addEventListener('resize', () => applyView());
 })();

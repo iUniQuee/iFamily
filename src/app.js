@@ -849,6 +849,24 @@ async function api(req, env, url, path) {
       has_password: !!(user.password && user.salt)
     });
   }
+  // «Холболт хүлээж буй» дэлгэцээс 5 секунд тутам дуудах хөнгөн статус.
+  // Бүтэн мод/layout-д хүрэхгүй — зөвхөн холбогдсон эсэх ба хүлээгдэж буй хүсэлт.
+  if (path === '/api/my-status' && method === 'GET') {
+    need();
+    const mem = user.member_id
+      ? await get(env, 'SELECT id, name FROM members WHERE id=?', user.member_id) : null;
+    const pr = await get(env, `SELECT r.id, r.member_id, r.created_at, m.name AS card_name
+      FROM link_requests r LEFT JOIN members m ON m.id = r.member_id
+      WHERE r.user_id = ? AND r.status = 'pending' ORDER BY r.id DESC LIMIT 1`, user.id);
+    const isAdm = user.role === 'admin' || user.role === 'super';
+    return json({
+      member_id: user.member_id || null,
+      member_name: mem ? mem.name : null,
+      role: user.role,
+      awaiting: !isAdm && !user.member_id,
+      pending: pr || null
+    }, 200, { 'cache-control': 'no-store', 'cdn-cache-control': 'no-store' });
+  }
   if (path === '/api/me/password' && method === 'POST') {
     need();
     const b = await readBody(req);
@@ -1957,10 +1975,16 @@ async function api(req, env, url, path) {
     need();
     // Ижил нэртэй хүмүүсийг ялгахын тулд аавын нэрийг (эцгийн нэр) хамт буцаана.
     const mems = await all(env, `SELECT m.id, m.name, m.birth_year, m.birth_date, m.sex, m.alive,
+      m.photo,
       (SELECT f.name FROM children c JOIN members f ON f.id = c.father_id
         WHERE c.child_id = m.id AND c.father_id IS NOT NULL ORDER BY c.id LIMIT 1) AS father_name
       FROM members m`);
-    return json({ members: sortMembers(mems).map(x => ({ ...x, pat: x.father_name ? genitiveName(x.father_name) : '' })) });
+    // Зургийн өгөгдлийг өөрөө биш, зөвхөн БАЙГАА эсэхийг буцаана (хариу хөнгөн байх ёстой)
+    return json({ members: sortMembers(mems).map(x => ({
+      id: x.id, name: x.name, birth_year: x.birth_year, birth_date: x.birth_date,
+      sex: x.sex, alive: x.alive, photo: !!x.photo,
+      pat: x.father_name ? genitiveName(x.father_name) : ''
+    })) });
   }
   if (path === '/api/link-requests' && method === 'GET') {
     needAdmin();
