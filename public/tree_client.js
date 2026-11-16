@@ -3029,7 +3029,7 @@ function genitiveName(name) {
     openModal('📅 Огноотой үйл явдал нэмэх',
       '<div style="font-size:12px;color:var(--muted)">Нэг хүний хамгийн ихдээ <b>4</b> үйл явдал. Тус бүр <b>+5 оноо</b>.</div>' +
       '<label class="f">Огноо</label><input type="date" id="me_date">' +
-      '<label class="f">Үйл явдлын нэр</label><input type="text" id="me_title" placeholder="ЖИШЭЭ: Ахлын хурим">',
+      '<label class="f">Үйл явдлын нэр</label><input type="text" id="me_title" placeholder="Жишээ: Ахын хурим">',
       '<button onclick="window.__closeModal()">Цуцлах</button>' +
       '<button class="primary" onclick="window.__saveMemEvent(' + id + ')">＋ Нэмэх</button>');
   };
