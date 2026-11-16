@@ -357,7 +357,8 @@ html[data-card] .card .ava, .card .ava,
   display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 26px;
 }
-.card img.ava { object-fit: cover; object-position: center 28%; display: block; background: #E8EEF6; }
+/* Хэрэглэгчид тайраагүй зураг оруулдаг тул зургийн ДЭЭД/нүүр хэсгийг эрхэмлэнэ */
+.card img.ava { object-fit: cover; object-position: center 20%; display: block; background: #E8EEF6; }
 html[data-card] .card .nm, .card .nm {
   position: absolute; left: 7px; right: 7px; bottom: 17px; z-index: 2;
   width: auto; color: #FFFFFF; font-size: 13px; font-weight: 800; line-height: 1.12;
@@ -830,7 +831,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=423"></script>
+<script src="/tree_client.js?v=424"></script>
 </body>
 </html>`;
 }
