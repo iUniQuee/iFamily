@@ -327,9 +327,11 @@ button.btn-ok:hover { filter: brightness(.9); }
 .link-s.link-down, .link-c.link-down,
 .link-s.link-kid, .link-c.link-kid { stroke: #10B981; stroke-width: 2.5; }
 .link-s.link-sib, .link-c.link-sib { stroke: #0EA5E9; stroke-width: 2.5; }
-.link-s.link-sp, .link-c.link-sp,
+/* Хань/бэр-хүргэн — нил ягаан; авга/нагац — корал (ах/дүүгээс ялгаатай) */
+.link-s.link-sp, .link-c.link-sp { stroke: #8B5CF6; stroke-width: 2.5; }
 .link-s.link-pat, .link-c.link-pat,
-.link-s.link-mat, .link-c.link-mat { stroke: #8B5CF6; stroke-width: 2.5; }
+.link-s.link-mat, .link-c.link-mat,
+.link-s.link-uncle, .link-c.link-uncle { stroke: #F97316; stroke-width: 2.5; }
 .link-s.link-hl, .link-c.link-hl { stroke: #10B981; stroke-width: 3; }
 
 /* ---------- КАРТ: бүтэн зурагтай минималист хэв ---------- */
@@ -355,7 +357,14 @@ html[data-card] .card.dead.m .box, html[data-card="best"] .card.dead.m .box { bo
 html[data-card] .card.dead.f .box, html[data-card="best"] .card.dead.f .box { border-top-color: #F9A8D4 !important; }
 html[data-card] .card.dead.q .box, html[data-card="best"] .card.dead.q .box { border-top-color: #E2E8F0 !important; }
 /* Дээд үеийн алтан хүрээ хамгийн сүүлд — бүх 4 талдаа 2.5px алт */
-html[data-card] .card.asc .box, html[data-card="best"] .card.asc .box { border: 2.5px solid #F59E0B !important; }
+/* Нас барсан дээд үеийн карт дээр ч 4 тал бүгд алт — хүйсийн өнгийн тууз гарахгүй */
+html[data-card] .card.asc .box,
+html[data-card] .card.asc.m .box, html[data-card] .card.asc.f .box, html[data-card] .card.asc.q .box,
+html[data-card] .card.dead.asc .box,
+html[data-card] .card.dead.asc.m .box, html[data-card] .card.dead.asc.f .box,
+html[data-card] .card.dead.asc.q .box,
+html[data-card="best"] .card.asc .box,
+html[data-card="best"] .card.dead.asc .box { border: 2.5px solid #F59E0B !important; }
 
 /* Зургийн доод хагаст харанхуй градиент — нэр/он тод уншигдана */
 .card .box::after {
@@ -877,7 +886,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=428"></script>
+<script src="/tree_client.js?v=429"></script>
 </body>
 </html>`;
 }

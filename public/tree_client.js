@@ -850,13 +850,21 @@
         // Тавцангийн өнгө: салаа БҮГД дээшээ үе (сонгосон хүн/өвөг) бол ШАР.
         // Ах/дүү байвал ХЭЗЭЭ Ч шар биш — бүдэг цэнхэр. Хос өөрөө/удам бол ногоон.
         const allUp = stubs.every(st => relUp(st.c));
+        const anyUp = stubs.some(st => relUp(st.c));
         const anySib = stubs.some(st => relSib.has(st.c));
+        // Авга/нагац (эцэг/эхийн ах дүү) — өөрийн ах дүүгээс ялгаатай өнгө
+        const anyUncle = stubs.some(st => relPat.has(st.c) || relMat.has(st.c));
+        const anyKid = stubs.some(st => st.c === relSel || (descSet && descSet.has(st.c)));
         // АЛТ зөвхөн БҮХ салаа дээшээ үед. Бусад үед дизайны шар-алт
         // (--link2) өнгө огт ашиглахгүй — ах/дүү рүү явсан тавцан/шугмаа
         // шар харагдахаас сэргийлж бүдэг цэнхэр (ах/дүү өнгө) болгоно.
-        const busCls = allUp ? ' link-up'
-          : ((e.a === relSel || e.b === relSel || (descSet && (descSet.has(e.a) || descSet.has(e.b)))) ? ' link-kid'
-            : ((anySib || relSel != null) ? ' link-sib' : ''));
+        // Тавцангийн өнгө — салаануудын хамаарлаас:
+        //   дээшээ үе байвал АЛТ, зөвхөн авга/нагац бол КОРАЛ,
+        //   хүүхэд бол НОГООН, ах/дүү бол ЦЭНХЭР, бусад — саарал.
+        const busCls = anyUp ? ' link-up'
+          : anyUncle ? ' link-uncle'
+            : (anyKid || e.a === relSel || e.b === relSel ? ' link-kid'
+              : ((anySib || relSel != null) ? ' link-sib' : ''));
         // ШАР нь ЗӨВХӨН дээшээ үе (эцэг/эх, эмээ/өвөө …). Ах/дүү нь өөрийн
         // хамаарлын өнгөөрөө (бүдэг цэнхэр) хэвээр — тиймээс салаа бүр
         // өөрийн хамаарлаар будагдана (busUp-аар бүх салааг шар болгохгүй).
