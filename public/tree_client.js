@@ -314,9 +314,10 @@
           // (жишээ: Мягмардорж-ийн эхнэр → «Ахын эхнэр»)
           const ty = yrOf(mid);
           const older = myYear && ty && ty !== myYear ? ty < myYear : null;
-          if (mid.sex === 'm') return older === null ? 'Ах/Дүүгийн эхнэр' : (older ? 'Ахын эхнэр' : 'Дүүгийн эхнэр');
-          if (mid.sex === 'f') return older === null ? 'Эгч/Дүүгийн нөхөр' : (older ? 'Эгчийн нөхөр' : 'Дүүгийн нөхөр');
-          return 'Ах/дүүгийн хань';
+          // Ахын эхнэр → «Бэр эгч», эгчийн нөхөр → «Хүргэн ах» гэх мэт
+          if (mid.sex === 'm') return older === null ? 'Бэр' : (older ? 'Бэр эгч' : 'Бэр дүү');
+          if (mid.sex === 'f') return older === null ? 'Хүргэн' : (older ? 'Хүргэн ах' : 'Хүргэн дүү');
+          return 'Бэр/Хүргэн';
         }
         if (p === 'C,C,C') {
           const gc = byId.get(ids[n - 1]) || {};
@@ -344,6 +345,16 @@
       if (/хүү$/i.test(w)) return w + 'гийн';
       return w + 'ийн';
     };
+    // Ах/дүү/эгчийн хань — монгол ёсны нэрээр (хүйсийг заавал баримтална)
+    const sibSpouse = (base) => {
+      if (base === 'Ах') return 'Бэр эгч';        // ахын эхнэр
+      if (base === 'Дүү') return 'Бэр дүү';       // дүүгийн эхнэр
+      if (base === 'Эгч') return 'Хүргэн ах';     // эгчийн нөхөр
+      if (base === 'Дүү охин') return 'Хүргэн дүү';
+      if (base === 'Ах/Дүү') return 'Бэр';
+      if (base === 'Эгч/Дүү') return 'Хүргэн';
+      return null;
+    };
     // Төрсөн оноор: ахмад нь ах/эгч, бага нь дүү
     const sibWord = (cy, ty, female) => {
       if (cy && ty && ty !== cy) return ty > cy ? 'дүү' : (female ? 'эгч' : 'ах');
@@ -364,6 +375,8 @@
         const bm = byId.get(ids[n - 1]) || {};
         // Хүйсийг заавал шалгана: эмэгтэй үеэлийн нөхөр → хүргэн, эрэгтэй үеэлийн эхнэр → бэргэн
         if (/Үеэл/.test(base)) return 'Үеэл ' + (bm.sex === 'f' ? 'хүргэн' : 'бэргэн');
+        const ss = sibSpouse(base);
+        if (ss) return ss;
         return genitiveOf(base) + (bm.sex === 'f' ? ' нөхөр' : ' эхнэр');
       }
       const up = path.filter(x => x === 'F' || x === 'M').length;
