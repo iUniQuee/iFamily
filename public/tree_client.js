@@ -1315,11 +1315,13 @@
       const isDesktop = window.matchMedia('(min-width: 768px)').matches;
       const panelOpen = !$('panel').classList.contains('hidden');
       if (isDesktop || panelOpen) openDetail(id);
-      // Камерыг ХОЁР фрэймийн дараа зөөнө — профайл самбар нээгдэж flex
-      // хэмжээ (viewport-ийн өргөн) БҮРЭН шинэчлэгдсэний дараа төв нь зөв
-      // тооцоологдоно (нэг rAF-д хэмжээ хуучин хэвээр байж, карт хажуу тийш
-      // зөрдөг байв).
-      requestAnimationFrame(() => requestAnimationFrame(() => panTo(id)));
+      // АККОРДЕОН: дарсан хүний үр хүүхэд нээгдэж, өмнөх хүнийх нь хумигдана
+      // (серверээс open=<id> layout татна). Дууссаны дараа камерыг тэр хүн рүү
+      // ХОЁР фрэймийн дараа зөөлөн гулсуулна — самбар нээгдэж flex хэмжээ
+      // шинэчлэгдсэн, шинэ layout байрласан байна.
+      const glide = () => requestAnimationFrame(() => requestAnimationFrame(() => panTo(id)));
+      try { Promise.resolve(window.__accordion(id)).then(glide, glide); }
+      catch (e) { glide(); }
     });
     $('cards').addEventListener('dblclick', e => {
       const card = e.target.closest('.card');
