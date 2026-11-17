@@ -290,19 +290,10 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
     if (!closedKids) {
       const kids1 = [...(rel.kids.get(openTarget) || [])].filter(k2 => visSet.has(k2));
       for (const k2 of kids1) keep.add(k2);
-      // ӨӨРИЙН салбар (нэвтрэхэд автоматаар нээгддэг) — 2 үе доош:
-      // хүүхдийн хань (хүргэн/бэр) ба ЗЭЭ хүүхэд ч харагдана.
-      // «Эрдэнэцэцэгээр орвол зээ Тогтуун, Эгшиглэн алга» гэсэн алдаа арилна.
-      if (openTarget === viewerId) {
-        for (const k2 of kids1) {
-          for (const s2 of spousesOf(k2)) if (visSet.has(s2)) keep.add(s2);
-          for (const g2k of rel.kids.get(k2) || []) {
-            if (!visSet.has(g2k)) continue;
-            keep.add(g2k);
-            for (const s3 of spousesOf(g2k)) if (visSet.has(s3)) keep.add(s3);
-          }
-        }
-      }
+      // НЭЭЛТТЭЙ ГЭР БҮЛ = зөвхөн нэг үе: өөрөө + хань + ШУУД хүүхдүүд.
+      // Хүүхдийн хань (бэр/хүргэн) ба зээ хүүхэд нь хаалттай үлдэнэ —
+      // тэднийг тухайн хүүхэд дээр дарахад нээгдэнэ. (Жишээ: Эрдэнэчимэгээр
+      // ороход Дөлгөөн, Мягмардож, Маралмаа 3 л харагдана.)
     }
     for (const id of [...keep]) if (!visSet.has(id)) keep.delete(id);
     for (const id of keep) cards.add(id);
