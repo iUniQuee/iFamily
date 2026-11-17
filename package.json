@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev --port 8787",
     "test": "node test-tree.mjs && node test-tree2.mjs && node test-zurkhai.mjs && node test-genitive.mjs",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "source:bundle": "node scripts/make-source-bundle.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

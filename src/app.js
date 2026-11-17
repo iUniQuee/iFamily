@@ -7,6 +7,7 @@ import { loginPage, appPage, notFoundPage } from './ui.js';
 import { scoreMember, scoreNewPhoto, scoreNewEvent, scoresPayload, levelUpFor, markLevelSeen } from './scores.js';
 import { buildXlsx } from './xlsx.js';
 import { makeZip } from './zip.js';
+import { SOURCE_TEXT, SOURCE_BIN } from './source_bundle.js';
 import { buildFullLayout, lineage } from './fulltree.js';
 import { notifyAdmins, pushPublicKey, sendPush } from './push.js';
 import { genitiveName } from './genitive.js';
@@ -2179,6 +2180,10 @@ async function api(req, env, url, path) {
       '  photos/ — гишүүдийн зургууд (member_<гишүүн>_<зураг>.<ext>).',
       '  member-photos.csv — зураг бүрийн ID, гишүүн, ZIP файл, эх URL.',
       '  avatars/ — анхдагч дүрсүүд (slot.jpg эсвэл slot.png).',
+      '  site/ — САЙТЫН БҮХ ЭХ КОД: index.html (ажиллаж байгаа хуудасны HTML),',
+      '      src/ (app.js, ui.js, tree.js, fulltree.js, db.js, zip.js ...), public/',
+      '      (tree_client.js, sw.js, manifest, splash/), package.json, wrangler.jsonc,',
+      '      site-manifest.json, server.js, тестүүд болон бүх зураг.',
       '  default-avatars.csv — слот бүрийн ZIP файл, шинэчлэгдсэн огноо.',
       '',
       'Одоогийн тоо: ' + JSON.stringify(data.counts),
@@ -2260,6 +2265,32 @@ async function api(req, env, url, path) {
     if (avRows.length) {
       files.push({ name: 'default-avatars.csv', data: csv(avRows, ['slot','file','updated_at']) });
     }
+    // --- САЙТЫН БҮХ ЭХ КОД -> ZIP доторх site/ хавтас ---
+    // Текст файлууд (src/, public/, package.json, wrangler.jsonc, D1-SCHEMA.sql,
+    // тестүүд ...) нь build үед src/source_bundle.js-д орсон байдаг.
+    // Зураг зэрэг хоёртын файлыг ASSETS-ээс шууд уншина.
+    for (const f of SOURCE_TEXT) files.push({ name: 'site/' + f.path, data: f.text });
+    const dbgBin = [];
+    for (const p of SOURCE_BIN) {
+      try {
+        // ASSETS нь public/-ыг үндэс болгодог тул уг префиксийг хасна.
+        // Эхлээд сайтын өөрийн URL-аас, болохгүй бол ASSETS binding-ээс уншина.
+        const u = new URL('/' + p.replace(/^public\//, ''), req.url).toString();
+        let r = null;
+        try { r = await fetch(u); } catch (e) { r = null; }
+        if ((!r || !r.ok) && env.ASSETS) {
+          try { r = await env.ASSETS.fetch(u); } catch (e) { r = null; }
+        }
+        if (r && r.ok) files.push({ name: 'site/' + p, data: new Uint8Array(await r.arrayBuffer()) });
+      } catch (e) { dbgBin.push(p + ':ERR ' + String(e && e.message || e)); }
+    }
+    // index.html — ажиллаж байгаа хуудасны бодит HTML хувилбар
+    try {
+      const r0 = await fetch(new URL('/', req.url), {
+        headers: { cookie: req.headers.get('cookie') || '' }
+      });
+      if (r0.ok) files.push({ name: 'site/index.html', data: await r0.text() });
+    } catch (e) { /* алгасна */ }
     const zip = makeZip(files);
     await audit(env, user, 'backup_zip', JSON.stringify(data.counts));
     return new Response(zip, { headers: {

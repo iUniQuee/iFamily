@@ -2091,7 +2091,7 @@ function genitiveName(name) {
       // Backup файлууд (JSON / Excel / ZIP) — зөвхөн супер админд
       body += item('download', 'emerald', 'Backup', 'Бүх өгөгдлийг JSON файлаар татах', '__backup');
       body += item('table', 'emerald', 'Excel', 'Бүх гишүүний мэдээллийг Excel-ээр татах', '__excel');
-      body += item('archive', 'emerald', 'Бүрэн ZIP', 'Дата + Excel + CSV + D1 схем — нэг файл', '__fullzip');
+      body += item('archive', 'emerald', 'Бүрэн ZIP', 'Дата + Excel + CSV + D1 схем + БҮХ эх код — нэг файл', '__fullzip');
       body += item('upload', 'blue', 'Импорт', 'Excel / JSON-оос гишүүд оруулах', '__import');
       body += '</div>';
     }
