@@ -9,4 +9,4 @@ compatibility_date = "2026-10-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "i-family-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "f16f062b-13c8-496d-a263-d2e2f75ba22f"
