@@ -22,6 +22,12 @@
   // Нээсэн гишүүний БҮРЭН HTML-ийг санах ойд хадгална — дахин дарахад серверийг
   // хүлээхгүй (0ms) шууд гарна. Арын дэвсгэрт шинэчилж, сүүлийн хувилбараар солино.
   const detailHtmlCache = new Map();
+  // Дарахаас ӨМНӨ (pointerdown) эхэлсэн профайлын хүсэлт — дарахад бэлэн байна
+  const detailFetch = new Map();
+  // Модны layout-ын хариу нь дээрх layoutCache-д (19-р мөр) хадгалагдана —
+  // өмнө нээсэн хүн рүү буцахад серверийг хүлээхгүй.
+  // Бичих үйлдлийн дараа бүх кэшийг цэвэрлэнэ (хуучин мэдээлэл харуулахгүй)
+  window.__clearTreeCaches = () => { detailHtmlCache.clear(); detailFetch.clear(); layoutCache.clear(); };
   let vRel = null; // нэвтэрсэн хэрэглэгч төвтэй динамик нэршлүүд (id → нэр)
   let curAsc = null, curDesc = null; // шууд дээшээ (АЛТ) / доошоо (ЦЭНХЭР) үеийн идэвхижлэлт
   let view = { x: 40, y: 30, z: 1 };
@@ -1326,6 +1332,17 @@
       try { Promise.resolve(window.__accordion(id)).then(glide, glide); }
       catch (e) { glide(); }
     });
+    // ХҮРЭХ/ДАРАХЫН ТЭР ДОРУЙ профайлын хүсэлтийг эхлүүлнэ — click хүртэлх
+    // хугацаанд хариу ирж, самбар тэр даруй дүүрнэ.
+    const prefetchDetail = (e) => {
+      const card = e.target.closest && e.target.closest('.card');
+      if (!card) return;
+      const id = Number(card.dataset.id);
+      if (!id || detailHtmlCache.has(id) || detailFetch.has(id)) return;
+      try { detailFetch.set(id, getJson('/api/members/' + id)); } catch (err) {}
+    };
+    $('cards').addEventListener('pointerdown', prefetchDetail, { passive: true });
+    $('cards').addEventListener('mouseenter', prefetchDetail, true);
     $('cards').addEventListener('dblclick', e => {
       const card = e.target.closest('.card');
       if (!card || RO) return;
@@ -1619,7 +1636,10 @@ function genitiveName(name) {
     if (cachedHtml) { panel.innerHTML = cachedHtml; panel.scrollTop = scrollKeep; }
     else panel.innerHTML = '';
     let d = null;
-    try { d = await getJson('/api/members/' + id); } catch (e) { toast(e.message); return; }
+    const pre = detailFetch.get(id);
+    if (pre) detailFetch.delete(id);
+    try { d = pre ? await pre : await getJson('/api/members/' + id); }
+    catch (e) { toast(e.message); return; }
     const m = d.member;
     const rel = d.relations;
     // «Таны харилцаа» — нэвтэрсэн хэрэглэгчтэй харьцуулсан нэр;
@@ -1911,7 +1931,16 @@ function genitiveName(name) {
       const url = '/api/full-layout?id=' + me +
         (fullOpen ? '&open=' + fullOpen + (fullClosed ? '&closed=1' : '') : '') +
         '&_=' + Date.now();
-      const L = await getJson(url);
+      // Өмнө нээсэн хүн рүү буцах / дахин дарахад серверийг хүлээхгүй.
+      const cacheKey = me + '|' + (fullOpen || 0) + '|' + (fullClosed ? 1 : 0);
+      let L = (!(opts && opts.refresh) && layoutCache.get(cacheKey)) || null;
+      if (!L) {
+        L = await getJson(url);
+        if (L && (L.nodes || []).length) {
+          layoutCache.set(cacheKey, L);
+          if (layoutCache.size > 24) layoutCache.delete(layoutCache.keys().next().value);
+        }
+      }
       if (seq !== fullSeq || !L || !(L.nodes || []).length) return;
       fullL = L;
       fullOpen = L.open || null;

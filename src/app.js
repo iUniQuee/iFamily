@@ -149,22 +149,25 @@ async function rawTables(env, full) {
   const now = Date.now();
   const hit = RAW[slot];
   if (hit && now - hit.at < RAW_TTL) return hit;
-  const [members, children, unions] = await Promise.all([
+  const [members, children, unions, rankRows, albumRows] = await Promise.all([
     all(env, full ? 'SELECT * FROM members' : LIGHT_MEMBERS_SQL),
     all(env, 'SELECT father_id, mother_id, child_id, rel_type FROM children'),
-    all(env, 'SELECT a_id, b_id FROM unions')
+    all(env, 'SELECT a_id, b_id FROM unions'),
+    all(env, 'SELECT member_id, role FROM users WHERE member_id IS NOT NULL'),
+    all(env, 'SELECT member_id, MIN(id) AS pid FROM member_photos GROUP BY member_id').catch(() => [])
   ]);
-  RAW[slot] = { at: now, members, children, unions };
+  // Цомгийн эхний зураг: member_id → зураг id (нүүр зургийн «хувилбар»)
+  const albumFirst = new Map();
+  for (const r of albumRows || []) albumFirst.set(Number(r.member_id), Number(r.pid) || 0);
+  RAW[slot] = { at: now, members, children, unions, rankRows, albumFirst };
   return RAW[slot];
 }
 
 async function contextOf(user, env, opts = {}) {
   // Гурван хүснэгт + хэрэглэгчийн зэрэглэлийг ЗЭРЭГ татна.
   // opts.light = true → зургийн base64-гүй (хурдан); opts.full = true → бүтэн.
-  const [raw, rankRows] = await Promise.all([
-    rawTables(env, !!opts.full),
-    all(env, 'SELECT member_id, role FROM users WHERE member_id IS NOT NULL')
-  ]);
+  const raw = await rawTables(env, !!opts.full);
+  const rankRows = raw.rankRows || [];
   // Кэшлэсэн мөрүүдийг дуудагч тал өөрчлөхөөс сэргийлж гүехэн хуулбар.
   const members = raw.members.map(m => ({ ...m }));
   const children = raw.children.map(c => ({ ...c }));
@@ -182,7 +185,7 @@ async function contextOf(user, env, opts = {}) {
     vis = new Set(); bio = new Set();
   }
   const trMap = new Map(rankRows.map(r => [r.member_id, RANK[r.role] || 1]));
-  return { members, children, unions, rel, vis, bio, isAdmin, trMap };
+  return { members, children, unions, rel, vis, bio, isAdmin, trMap, albumFirst: raw.albumFirst || new Map() };
 }
 
 function relationsOf(ctx, id) {
@@ -226,11 +229,7 @@ async function buildState(user, env, opts = {}) {
   }
   // Цомгийн эхний зурагтай гишүүд — нүүр зураггүй бол түүгээр харуулна
   // member_id → цомгийн эхний зургийн id (нүүр зургийн «хувилбар» болж ажиллана)
-  const albumFirst = new Map();
-  try {
-    const rows = await all(env, 'SELECT member_id, MIN(id) AS pid FROM member_photos GROUP BY member_id');
-    for (const r of rows) albumFirst.set(Number(r.member_id), Number(r.pid) || 0);
-  } catch (e) { /* member_photos хүснэгт хоосон үед алгасна */ }
+  const albumFirst = ctx.albumFirst || new Map();
   // Зургийн URL-ийн хувилбар (?v=): зураг солигдмогц линк өөрчлөгдөж, браузерын
   // кэш (1 өдөр) хуучин зургийг гацаахгүй. Жижиг хэш — бүтэн base64-ыг уншихгүй.
   function photoVer(raw, albumPid) {

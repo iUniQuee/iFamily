@@ -1134,6 +1134,8 @@ window.post = async function (url, data) {
   });
   const j = await r.json().catch(function () { return {}; });
   if (!r.ok) throw new Error(j.error || ('Алдаа ' + r.status));
+  // Өгөгдөл өөрчлөгдсөн — профайл/модны кэшийг цэвэрлэнэ
+  try { if (window.__clearTreeCaches) window.__clearTreeCaches(); } catch (e) {}
   return j;
 };
 window.getJson = async function (url) {
