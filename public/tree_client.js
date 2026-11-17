@@ -743,7 +743,11 @@
       : ((S.viewer && S.viewer.member_id && byId.has(S.viewer.member_id)) ? S.viewer.member_id : null);
     const ascSet = relSel != null ? ascOf(relSel) : null;
     const descSet = relSel != null ? descOf(relSel) : null;
-    const relUp = (x) => !!ascSet && (x === relSel || ascSet.has(x));
+    // «Дээшээ үе = АЛТ» нь ЗӨВХӨН цусан өвөг. Хадмын тал (эхнэр/нөхрийн
+    // эцэг/эх, өвөө/эмээ, ах/дүү) хэзээ ч алт биш — нил ягаан (хань) өнгөтэй.
+    // relIn/relSp доор бөглөгддөг тул энэ шалгалт дуудагдах үед бэлэн байна.
+    const relUp = (x) => !!ascSet && (x === relSel || ascSet.has(x)) &&
+      !relIn.has(x) && !relSp.has(x);
     const relSib = new Set(), relPat = new Set(), relMat = new Set();
     const relSp = new Set(), relIn = new Set();
     if (relSel != null) {
