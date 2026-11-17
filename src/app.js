@@ -2061,7 +2061,7 @@ async function api(req, env, url, path) {
   // --- Web Push: админд утасны мэдэгдэл (шинэ бүртгэл / карт холбох хүсэлт) ---
   if (path === '/api/push/key' && method === 'GET') {
     need();
-    const key = pushPublicKey(env);
+    const key = await pushPublicKey(env);
     return json({ key, enabled: !!key });
   }
   if (path === '/api/push/subscribe' && method === 'POST') {
@@ -2084,7 +2084,7 @@ async function api(req, env, url, path) {
   // --- Web Push: төлөв ба туршилт (админ өөрөө шалгах) ---
   if (path === '/api/push/status' && method === 'GET') {
     needAdmin();
-    const key = pushPublicKey(env);
+    const key = await pushPublicKey(env);
     let subs = 0, mine = 0, thisDevice = null;
     try {
       const a = await get(env, 'SELECT COUNT(*) AS c FROM push_subs');

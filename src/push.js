@@ -1,6 +1,6 @@
 // Web Push (VAPID + aes128gcm) — Cloudflare Workers-т зориулсан хөнгөн хэрэгжилт.
 // Гадаад сангуй: WebCrypto (ECDH P-256, HKDF-SHA256, AES-128-GCM, ECDSA).
-import { all, run } from './db.js';
+import { all, get, run } from './db.js';
 
 const enc = new TextEncoder();
 
@@ -38,8 +38,55 @@ export function parseVapid(env) {
     return k && k.privateJwk && k.publicKey ? k : null;
   } catch (e) { return null; }
 }
-export function pushPublicKey(env) {
-  const v = parseVapid(env);
+// VAPID түлхүүрийг олно: ① env.VAPID_KEYS (dashboard secret) ② D1 design.vapid_keys
+// ③ байхгүй бол ШИНЭЭР үүсгэж D1-д хадгална (Cloudflare Pages дээр env
+// тохируулах шаардлагагүй — push шууд ажиллана).
+let VAPID_MEM = null;   // isolate доторх кэш
+
+async function generateVapid() {
+  const kp = await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const priv = await crypto.subtle.exportKey('jwk', kp.privateKey);
+  const pub = await crypto.subtle.exportKey('jwk', kp.publicKey);
+  // Browser-т өгөх applicationServerKey = 0x04 || X(32) || Y(32)
+  const raw = new Uint8Array(65);
+  raw[0] = 4;
+  raw.set(b64uDecode(pub.x), 1);
+  raw.set(b64uDecode(pub.y), 33);
+  return { privateJwk: priv, publicKey: b64uEncode(raw) };
+}
+
+export async function getVapid(env) {
+  const fromEnv = parseVapid(env);
+  if (fromEnv) return fromEnv;
+  if (VAPID_MEM) return VAPID_MEM;
+  try {
+    const row = await get(env, "SELECT value FROM design WHERE key='vapid_keys'");
+    if (row && row.value) {
+      try {
+        const j = JSON.parse(row.value);
+        if (j && j.privateJwk && j.publicKey) { VAPID_MEM = j; return j; }
+      } catch (e) { /* эвдэрсэн бол доор шинээр үүсгэнэ */ }
+    }
+    const fresh = await generateVapid();
+    await run(env,
+      "INSERT INTO design(key,value) VALUES('vapid_keys',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+      JSON.stringify(fresh));
+    // Зэрэгцээ хүсэлт өөр түлхүүр бичсэн байж болзошгүй — хадгалагдсаныг нь уншина
+    const saved = await get(env, "SELECT value FROM design WHERE key='vapid_keys'");
+    let out = fresh;
+    if (saved && saved.value) {
+      try { const j = JSON.parse(saved.value); if (j && j.privateJwk) out = j; } catch (e) {}
+    }
+    VAPID_MEM = out;
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function pushPublicKey(env) {
+  const v = await getVapid(env);
   return v ? v.publicKey : '';
 }
 
@@ -79,7 +126,7 @@ export async function encryptPush(payload, p256dh, auth) {
 }
 
 export async function sendPush(env, sub, payload) {
-  const vapid = parseVapid(env);
+  const vapid = await getVapid(env);
   if (!vapid) return { ok: false, gone: false };
   const body = await encryptPush(JSON.stringify(payload), sub.p256dh, sub.auth);
   const authorization = await vapidAuth(vapid, sub.endpoint);
@@ -99,7 +146,7 @@ export async function sendPush(env, sub, payload) {
 
 // Бүх админ/супер админы бүртгэлтэй төхөөрөмж рүү мэдэгдэл илгээнэ
 export async function notifyAdmins(env, title, body, url = '/') {
-  if (!parseVapid(env)) return 0;
+  if (!(await getVapid(env))) return 0;
   let subs = [];
   try {
     subs = await all(env, `SELECT s.id, s.endpoint, s.p256dh, s.auth FROM push_subs s
