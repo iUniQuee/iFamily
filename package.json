@@ -11,7 +11,8 @@
     "pages:index": "node scripts/make-index-html.mjs",
     "pages:dev": "npx wrangler pages dev",
     "pages:deploy": "npx wrangler pages deploy public",
-    "workers:build": "npx wrangler deploy --dry-run --outdir dist --config wrangler.workers.jsonc"
+    "workers:build": "npx wrangler deploy --dry-run --outdir dist --config wrangler.workers.jsonc",
+    "sync:data": "node scripts/sync-data.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
