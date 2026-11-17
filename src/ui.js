@@ -1047,8 +1047,10 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
   box-shadow: 0 18px 40px rgba(15,23,42,.10), 0 2px 6px rgba(15,23,42,.04); }
 .ahead { display: flex; align-items: center; justify-content: center; gap: 10px;
   font-size: 21px; font-weight: 800; color: #0F172A; letter-spacing: -.01em; }
-.aicon { width: 38px; height: 38px; border-radius: 12px; background: #ECFDF5; color: #059669;
-  display: grid; place-items: center; flex: 0 0 38px; }
+/* Толгойн лого — аппын алтан хүрээтэй модон эмблем (SVG навчис биш) */
+.aicon { width: 40px; height: 40px; border-radius: 11px; flex: 0 0 40px;
+  display: block; object-fit: cover;
+  box-shadow: 0 6px 16px rgba(168,128,42,.30), 0 0 0 1px rgba(168,128,42,.22); }
 .asub { color: #64748B; font-size: 13px; margin: 10px 0 18px; text-align: center; line-height: 1.45; }
 .tabs { display: flex; gap: 4px; background: #F1F5F9; border-radius: 999px; padding: 3px; margin-bottom: 18px; }
 .tab { flex: 1; border: 0; border-radius: 999px; padding: 9px 0; font-size: 14px; font-weight: 700;
@@ -1088,7 +1090,7 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 </head>
 <body>
 <div class="authcard">
-  <div class="ahead"><span class="aicon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></span><span>iFamily</span></div>
+  <div class="ahead"><img class="aicon" src="/icon-512.png?v=2" width="40" height="40" alt="iFamily" decoding="async"><span>iFamily</span></div>
   <div class="asub">Ургийн бичгээ хамтран баяжуулах гэр бүлийн апп.</div>
   <div class="tabs">
     <button type="button" id="tabLogin" class="tab on" onclick="showTab('login')">Нэвтрэх</button>
@@ -1248,10 +1250,10 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <style>${CSS}</style>
 </head>
 <body>
-<div id="splash"><img src="/icon-512.png" alt="iFamily"><div class="spt">iFamily</div><div class="spsub">Угийн мод</div><div class="sps"></div></div>
+<div id="splash"><img src="/icon-512.png?v=2" alt="iFamily" decoding="async"><div class="spt">iFamily</div><div class="spsub">Угийн мод</div><div class="sps"></div></div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var s=document.getElementById('splash');if(s){s.style.opacity='0';setTimeout(function(){s.remove()},350)}},450);setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove()},9000)});</script>
 <header id="top">
-  <div class="brand"><img class="brand-emblem" src="/icon-512.png" width="28" height="28" alt="iFamily" decoding="async"><span>iFamily</span></div>
+  <div class="brand"><img class="brand-emblem" src="/icon-512.png?v=2" width="28" height="28" alt="iFamily" decoding="async"><span>iFamily</span></div>
   <div id="topbtns"></div>
   <div id="who"></div>
 </header>
