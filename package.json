@@ -1,0 +1,19 @@
+{
+  "name": "i-family",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx wrangler dev --port 8787",
+    "test": "node test-tree.mjs && node test-tree2.mjs && node test-zurkhai.mjs && node test-genitive.mjs",
+    "deploy": "npx wrangler deploy",
+    "source:bundle": "node scripts/make-source-bundle.mjs",
+    "pages:index": "node scripts/make-index-html.mjs",
+    "pages:dev": "npx wrangler pages dev",
+    "pages:deploy": "npx wrangler pages deploy public",
+    "workers:build": "npx wrangler deploy --dry-run --outdir dist --config wrangler.workers.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
