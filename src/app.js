@@ -129,25 +129,40 @@ function canEdit(user, targetId, trMap) {
 // `SELECT *` нь хүснэгтийг бүхэлд нь татдаг байв. Хүсэлт бүрт (нэг дарахад
 // 2–3 хүсэлт зэрэг) татахгүйн тулд 10 секунд кэшилнэ. Бичих хүсэлт (POST/
 // PUT/DELETE) ирмэгц кэш шууд цэвэрлэгддэг тул өөрчлөлт тэр даруй харагдана.
-let RAW = null; // { at, members, children, unions }
+let RAW = { light: null, full: null }; // { at, members, children, unions }
 const RAW_TTL = 10000;
-function clearRawCache() { RAW = null; }
-async function rawTables(env) {
+function clearRawCache() { RAW = { light: null, full: null }; }
+
+// ХӨНГӨН горим: нүүр зургийн base64 (~6 MB) оронд шууд lazy линк
+// (/api/members/<id>/photo) буцаана. Мод, профайл, оноо зэрэг БҮХ энгийн
+// харагдац зурагнаас өөрөө татдаг тул ямар ч ялгаа гарахгүй — харин
+// хүсэлт бүрт мегабайт өгөгдөл зөөхгүй. Жинхэнэ base64 нь зөвхөн
+// бичих (засах/зураг солих) болон нийтийн хуудаст хэрэгтэй.
+const LIGHT_MEMBERS_SQL =
+  "SELECT id, name, sex, birth_year, birth_date, birth_place, clan, alive, phone, bio, honors, " +
+  "CASE WHEN photo LIKE 'data:%' THEN '/api/members/' || id || '/photo' ELSE COALESCE(photo,'') END AS photo, " +
+  "CASE WHEN photo LIKE 'data:%' THEN length(photo) ELSE 0 END AS photo_bytes, " +
+  "death_date, emoji, created_by, created_at FROM members";
+
+async function rawTables(env, full) {
+  const slot = full ? 'full' : 'light';
   const now = Date.now();
-  if (RAW && now - RAW.at < RAW_TTL) return RAW;
+  const hit = RAW[slot];
+  if (hit && now - hit.at < RAW_TTL) return hit;
   const [members, children, unions] = await Promise.all([
-    all(env, 'SELECT * FROM members'),
+    all(env, full ? 'SELECT * FROM members' : LIGHT_MEMBERS_SQL),
     all(env, 'SELECT father_id, mother_id, child_id, rel_type FROM children'),
     all(env, 'SELECT a_id, b_id FROM unions')
   ]);
-  RAW = { at: now, members, children, unions };
-  return RAW;
+  RAW[slot] = { at: now, members, children, unions };
+  return RAW[slot];
 }
 
-async function contextOf(user, env) {
+async function contextOf(user, env, opts = {}) {
   // Гурван хүснэгт + хэрэглэгчийн зэрэглэлийг ЗЭРЭГ татна.
+  // opts.light = true → зургийн base64-гүй (хурдан); opts.full = true → бүтэн.
   const [raw, rankRows] = await Promise.all([
-    rawTables(env),
+    rawTables(env, !!opts.full),
     all(env, 'SELECT member_id, role FROM users WHERE member_id IS NOT NULL')
   ]);
   // Кэшлэсэн мөрүүдийг дуудагч тал өөрчлөхөөс сэргийлж гүехэн хуулбар.
@@ -197,7 +212,7 @@ function sanitize(m, hasBio, editable) {
 }
 
 async function buildState(user, env, opts = {}) {
-  const ctx = await contextOf(user, env);
+  const ctx = await contextOf(user, env, { full: !!opts.publicView });
   let vis = ctx.vis, bio = ctx.bio;
   if (opts.publicView) {
     vis = new Set(ctx.members.map(x => x.id));
@@ -235,7 +250,7 @@ async function buildState(user, env, opts = {}) {
     // цомгийн эхний зураг руу шилжүүлнэ
     const storedLazy = /^\/api\/members\/\d+\/photo$/i.test(String(m.photo || ''));
     const lazyUrl = '/api/members/' + m.id + '/photo?v=' +
-      photoVer(storedLazy ? '' : m.photo, albumFirst.get(m.id));
+      photoVer(storedLazy ? '#' + (m.photo_bytes || 0) : m.photo, albumFirst.get(m.id));
     if (!x.photo || storedLazy) {
       x.photo = albumFirst.has(m.id) ? lazyUrl : null;
     } else if (!opts.publicView && /^data:image\//i.test(String(m.photo || ''))) {
@@ -979,7 +994,7 @@ async function api(req, env, url, path) {
   // (хань талын эцэг/эх) ХЭЗЭЭ Ч гарахгүй. `open` — аккордеоноор нээсэн хүн.
   if (path === '/api/full-layout' && method === 'GET') {
     need();
-    const ctx = await contextOf(user, env);
+    const ctx = await contextOf(user, env, { light: true });
     const id = Number(url.searchParams.get('id')) || (user && user.member_id) || 0;
     if (!id || !ctx.vis.has(id)) {
       return json({ viewer: 0, open: 0, openFamily: [], openable: [], cards: [], nodes: [], edges: [], width: 0, height: 0 }, 404);
@@ -1549,7 +1564,7 @@ async function api(req, env, url, path) {
     const action = mm[2] || '';
     if (method === 'GET' && !action) {
       need();
-      const ctx = await contextOf(user, env);
+      const ctx = await contextOf(user, env, { light: true });
       const mem = ctx.members.find(x => x.id === id);
       if (!mem || !ctx.vis.has(id)) throw httpErr(404, 'Гишүүн олдохгүй');
       const hasBio = ctx.isAdmin || ctx.bio.has(id);
