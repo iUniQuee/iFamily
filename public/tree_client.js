@@ -2251,18 +2251,28 @@ function genitiveName(name) {
       if (perm !== 'granted') return toast('Мэдэгдлийн зөвшөөрөл өгөөгүй');
       const { key } = await getJson('/api/push/key');
       if (!key) return toast('Серверт мэдэгдлийн түлхүүр тохируулаагүй байна');
+      const t = key.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = '='.repeat((4 - (t.length % 4)) % 4);
+      const bin = atob(t + pad);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const reg0 = await navigator.serviceWorker.register('/sw.js');
       try { await reg0.update(); } catch (e) { /* update шалгалт амжилтгүй */ }
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        const t = key.replace(/-/g, '+').replace(/_/g, '/');
-        const pad = '='.repeat((4 - (t.length % 4)) % 4);
-        const bin = atob(t + pad);
-        const u8 = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8 });
+      // VAPID түлхүүр солигдсон бол (жишээ нь Workers → Pages шилжилт) хуучин
+      // subscription нь хуучин түлхүүртэй холбогдсон тул push үйлчилгээ
+      // 400/403 буцаадаг. Тиймээс түлхүүр өөр байвал дахин үүсгэнэ.
+      if (sub) {
+        const cur = (sub.options && sub.options.applicationServerKey)
+          ? new Uint8Array(sub.options.applicationServerKey) : null;
+        const same = !!cur && cur.length === u8.length && cur.every((v, i) => v === u8[i]);
+        if (!same) {
+          try { await sub.unsubscribe(); } catch (e) { /* үгүй бол алгасна */ }
+          sub = null;
+        }
       }
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8 });
       await post('/api/push/subscribe', sub.toJSON());
       toast('🔔 Мэдэгдэл асаалаа ✓');
     } catch (e) { toast('Мэдэгдэл асаахад алдаа: ' + (e.message || e)); }
