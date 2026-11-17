@@ -2315,11 +2315,58 @@ async function api(req, env, url, path) {
       for (const t of CLEAR) { try { await run(env, 'DELETE FROM ' + t); } catch (e) {} }
     }
     const restored = {};
+    // ① ХЭРЭГЛЭГЧДИЙН БҮРТГЭЛ эхэлж — бусад хүснэгтийн user_id-г утсаар
+    // хөрвүүлэхэд хэрэгтэй. Backup нь ХУУЧИН баазын user id-г агуулдаг тул
+    // шинэ бааз дээр (id дахин дугаарлагдсан) оноо БУРУУ хүнд оноогддог байв.
+    const idMap = {};   // хуучин user.id → шинэ user.id
+    let linked = 0;
+    for (const u of (b.users || [])) {
+      const phone = String(u && u.phone || '').replace(/\D/g, '');
+      if (!phone) continue;
+      try {
+        const ex = await get(env, 'SELECT id FROM users WHERE phone=?', phone);
+        let nid = ex && ex.id;
+        if (ex) {
+          if (u.password && u.salt) {
+            await run(env, 'UPDATE users SET name=?, role=?, member_id=?, password=?, salt=? WHERE id=?',
+              u.name || '', u.role || 'member', u.member_id || null, u.password, u.salt, ex.id);
+          } else {
+            // Backup-д хэш байхгүй бол БАЙГАА нууц үгийг устгахгүй
+            await run(env, 'UPDATE users SET name=?, role=?, member_id=? WHERE id=?',
+              u.name || '', u.role || 'member', u.member_id || null, ex.id);
+          }
+        } else {
+          nid = await insert(env, 'INSERT INTO users(phone, name, role, member_id, password, salt) VALUES(?,?,?,?,?,?)',
+            phone, u.name || '', u.role || 'member', u.member_id || null,
+            u.password || null, u.salt || null);
+        }
+        if (u.id != null && nid) idMap[Number(u.id)] = Number(nid);
+        linked++;
+      } catch (e) { /* нэг хэрэглэгч алдаатай бол бусдыг үргэлжлүүлнэ */ }
+    }
+    restored.users = linked;
+    // ② Бусад хүснэгт — user_id/viewer_id-г шинэ id рүү хөрвүүлж бичнэ.
+    // Хуучин бааз дээр ч байгаагүй (устсан) хэрэглэгчийн мөр = алгасна
+    // (хуучин сайт дээр ч тэр оноо хэнд ч харагдахгүй байсан).
+    const USERREF = {
+      field_scores: 'user_id', link_requests: 'user_id', push_subs: 'user_id',
+      score_ranks: 'user_id', photo_comments: 'user_id', layout_locks: 'viewer_id'
+    };
     for (const t of ['design', 'members', 'children', 'unions', 'field_scores', 'albums',
       'album_photos', 'member_photos', 'member_events', 'link_requests',
-      'default_avatars', 'photo_comments', 'score_ranks', 'layout_locks', 'push_subs']) {
-      const rows = b[t];
+      'default_avatars', 'photo_comments', 'score_ranks', 'layout_locks']) {
+      const col = USERREF[t];
+      let rows = b[t];
       if (!Array.isArray(rows) || !rows.length) { restored[t] = 0; continue; }
+      let orphan = 0;
+      if (col) {
+        rows = rows.map(r => {
+          if (!Object.prototype.hasOwnProperty.call(r, col)) return r;
+          const nid = idMap[Number(r[col])];
+          if (nid == null) { orphan++; return null; }
+          return { ...r, [col]: nid };
+        }).filter(Boolean);
+      }
       const mk = (r) => {
         const cols = Object.keys(r);
         return env.DB.prepare('INSERT OR REPLACE INTO ' + t + '(' + cols.join(',') + ') VALUES(' +
@@ -2335,34 +2382,8 @@ async function api(req, env, url, path) {
       }
       restored[t] = ok;
       if (skipped) restored[t + '_skipped'] = skipped;
+      if (orphan) restored[t + '_orphan'] = orphan;
     }
-    // ХЭРЭГЛЭГЧДИЙН БҮРТГЭЛ (утас, нууц үгийн хэш, эрх, картын холбоос) —
-    // өмнө нь сэргээгддэггүй байсан тул шинэ бааз дээр зөвхөн 1 аккаунт
-    // үлддэг байв. Одоо утсаар тааруулж upsert хийнэ (устгахгүй).
-    let linked = 0;
-    for (const u of (b.users || [])) {
-      const phone = String(u && u.phone || '').replace(/\D/g, '');
-      if (!phone) continue;
-      try {
-        const ex = await get(env, 'SELECT id FROM users WHERE phone=?', phone);
-        if (ex) {
-          if (u.password && u.salt) {
-            await run(env, 'UPDATE users SET name=?, role=?, member_id=?, password=?, salt=? WHERE id=?',
-              u.name || '', u.role || 'member', u.member_id || null, u.password, u.salt, ex.id);
-          } else {
-            // Backup-д хэш байхгүй бол БАЙГАА нууц үгийг устгахгүй
-            await run(env, 'UPDATE users SET name=?, role=?, member_id=? WHERE id=?',
-              u.name || '', u.role || 'member', u.member_id || null, ex.id);
-          }
-        } else {
-          await insert(env, 'INSERT INTO users(phone, name, role, member_id, password, salt) VALUES(?,?,?,?,?,?)',
-            phone, u.name || '', u.role || 'member', u.member_id || null,
-            u.password || null, u.salt || null);
-        }
-        linked++;
-      } catch (e) { /* нэг хэрэглэгч алдаатай бол бусдыг үргэлжлүүлнэ */ }
-    }
-    restored.users = linked;
     await audit(env, user, 'restore', JSON.stringify(restored));
     return json({ ok: true, restored, linked });
   }
