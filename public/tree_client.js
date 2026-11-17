@@ -775,11 +775,14 @@
         }
       }
     }
-    const relClass = (c) => (descSet && descSet.has(c)) ? ' link-kid'
+    // ХАНЬ/ХАДМЫН ТАЛ (эхнэр/нөхөр, тэдний эцэг/эх, ах/дүү) нь ЮУНЫ ӨМНӨ
+    // нил ягаан — эс бөгөөс хадмын ах/дүү «ах/дүү»-гийн бүдэг цэнхэр болж,
+    // Гансүх & Эрдэнэцэгээс Цэнд рүү явсан шугам цэнхэр харагддаг байв.
+    const relClass = (c) => (relSp.has(c) || relIn.has(c)) ? ' link-sp'
+      : (descSet && descSet.has(c)) ? ' link-kid'
       : relSib.has(c) ? ' link-sib'
       : relPat.has(c) ? ' link-pat'
-      : relMat.has(c) ? ' link-mat'
-      : (relSp.has(c) || relIn.has(c)) ? ' link-sp' : '';
+      : relMat.has(c) ? ' link-mat' : '';
     const hlS = (a, b) => (relUp(a) && relUp(b)) ? ' link-up' : '';
     const hlC = (p, c) => relUp(c) ? ' link-up' : relClass(c);
     const hlStub = (c) => relUp(c) ? ' link-up' : relClass(c);
@@ -917,10 +920,10 @@
         // хамаатаны өнгө бүх эгч/ах, авга/нагац руу тархахгүй.
         const busCls = allUp ? ' link-up'
           : anyUp ? ''
-            : anyUncle ? ' link-uncle'
-              : anySib ? ' link-sib'
-                : anyKid ? ' link-kid'
-                  : anySp ? ' link-sp' : '';
+            : anySp ? ' link-sp'          // хань/хадмын тал — нил ягаан
+              : anyUncle ? ' link-uncle'
+                : anySib ? ' link-sib'
+                  : anyKid ? ' link-kid' : '';
         // ШАР нь ЗӨВХӨН дээшээ үе (эцэг/эх, эмээ/өвөө …). Ах/дүү нь өөрийн
         // хамаарлын өнгөөрөө (бүдэг цэнхэр) хэвээр — тиймээс салаа бүр
         // өөрийн хамаарлаар будагдана (busUp-аар бүх салааг шар болгохгүй).
