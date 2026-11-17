@@ -248,11 +248,15 @@ async function buildState(user, env, opts = {}) {
     // DB-д «lazy» линк хадгалагдсан бол (хуучин бичлэг) эвдэрсэн зураг гарахаас сэргийлж
     // цомгийн эхний зураг руу шилжүүлнэ
     const storedLazy = /^\/api\/members\/\d+\/photo$/i.test(String(m.photo || ''));
+    // ХӨНГӨН ГОРИМД base64 нүүр зургийг «lazy линк + photo_bytes (урт)» хэлбэрээр
+    // авдаг. Урт нь 0-ээс их бол нүүр зураг БАЙНА; 0 бол зөвхөн хуучин бичлэгийн
+    // хадгалсан lazy линк (эвдэрсэн) — тэр үед цомгийн эхний зураг руу шилжинэ.
+    const hasCover = !!m.photo && (!storedLazy || (Number(m.photo_bytes) || 0) > 0);
     const lazyUrl = '/api/members/' + m.id + '/photo?v=' +
-      photoVer(storedLazy ? '#' + (m.photo_bytes || 0) : m.photo, albumFirst.get(m.id));
-    if (!x.photo || storedLazy) {
+      photoVer(storedLazy ? '#' + (Number(m.photo_bytes) || 0) : m.photo, albumFirst.get(m.id));
+    if (!hasCover) {
       x.photo = albumFirst.has(m.id) ? lazyUrl : null;
-    } else if (!opts.publicView && /^data:image\//i.test(String(m.photo || ''))) {
+    } else if (!opts.publicView && (storedLazy || /^data:image\//i.test(String(m.photo || '')))) {
       x.photo = lazyUrl;
     }
     // Нүүр зураг байхгүй ч цомогт зурагтай бол эхний зургийг нүүр болгож харуулна
