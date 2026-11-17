@@ -134,6 +134,8 @@ body { -webkit-text-size-adjust: 100%; }
 #viewport.dragging { cursor: grabbing; }
 
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; backface-visibility: hidden; }
+/* Зөөлөн пан/зум — зөвхөн гулсуулах үед (glide класс) transition ажиллана */
+#world.glide { transition: transform .5s cubic-bezier(.22,.61,.36,1); }
 #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
 .link-c, .link-s { fill: none; stroke: #CBD5E1; stroke-width: 2; stroke-linecap: round; }
 .link-plat { fill: none; stroke: none; }
@@ -1285,7 +1287,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=478"></script>
+<script src="/tree_client.js?v=479"></script>
 </body>
 </html>`;
 }

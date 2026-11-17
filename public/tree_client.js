@@ -725,6 +725,12 @@
     const L = activeLayout();
     const es = L.edges || [];
     const shown = shownIds();
+    // АНХНЫ ХАРАГДАЦ: 160 хүнтэй модыг бүхэлд нь багтааж жижигрүүлээд дараа нь
+    // өөрийн карт руу «гүйх» анимэйшн хийхгүй — эхний зурагдахдаа л нэвтэрсэн
+    // хэрэглэгчийн өөрийн карт дээр төвлөрч, уншигдахуйц зумтай гарна.
+    const meFirst = (S.viewer && S.viewer.member_id) || null;
+    const firstOnMe = !fitted && meFirst != null && (L.nodes || []).some(n => n.id === meFirst);
+    if (firstOnMe && selected == null) selected = meFirst;
     curRel = (selected != null && byId.has(selected)) ? relLabels(selected) : null;
     curAsc = (selected != null && byId.has(selected)) ? ascOf(selected) : null;
     curDesc = (selected != null && byId.has(selected)) ? descOf(selected) : null;
@@ -1041,22 +1047,24 @@
     else if (!RO && S.members.length === 0) empty.classList.remove('hidden');
     if (!fitted && (L.nodes || []).length) {
       fitted = true;
-      fit();
-      // 160 гишүүнтэй өргөн мод дэлгэцэнд «толбо» болж жижигрэхгүйн тулд
-      // уншигдахуйц доод зум (0.62) тавина — бүтнийг харахыг хүсвэл pinch out.
-      if (view.z < 0.5) {
+      if (firstOnMe) {
+        // ШУУД өөрийн карт дээр — fit() ч, rAF анимэйшн ч байхгүй (нэг зурагдалт).
         const vp0 = $('viewport');
-        view.z = Math.max(0.62, Math.min(1.1, (vp0 ? vp0.clientWidth : 360) / 430));
-        applyView();
-      }
-      // ЛОГИН ХИЙХЭД ӨӨРИЙН КАРТ ДЭЭР ШУУД ОЧНО: хэрэглэгч модны карттай
-      // холбогдсон бол эхний харагдац түүний карт дээр төвлөрнө.
-      const me = S.viewer && S.viewer.member_id;
-      if (me && (L.nodes || []).some(n => n.id === me)) {
-        // selected = me ГЭЖ ТАВИХГҮЙ — карт «дарсан" байдалтай харагдахгүй.
-        // Нэвтэрсэн хэрэглэгч автоматаар СОНГОГДОЖ (selected/active),
-        // дэлгэцийн голд фокуслана.
-        requestAnimationFrame(() => focusOnSelf());
+        const z0 = Math.max(0.62, Math.min(1.05, (vp0 ? vp0.clientWidth : 360) / 430));
+        const n0 = (L.nodes || []).find(x => x.id === meFirst);
+        if (vp0 && n0) {
+          view.z = z0;
+          view.x = vp0.clientWidth / 2 - (n0.x + (n0.w || 156) / 2) * z0;
+          view.y = vp0.clientHeight / 2 - (n0.y + 40) * z0;
+        } else { fit(); }
+      } else {
+        fit();
+        // 160 гишүүнтэй өргөн мод дэлгэцэнд «толбо» болж жижигрэхгүйн тулд
+        // уншигдахуйц доод зум (0.62) тавина — бүтнийг харахыг хүсвэл pinch out.
+        if (view.z < 0.5) {
+          const vp0 = $('viewport');
+          view.z = Math.max(0.62, Math.min(1.1, (vp0 ? vp0.clientWidth : 360) / 430));
+        }
       }
     }
   }
@@ -1289,14 +1297,13 @@
         return;
       }
       lastTap = { id, t: now };
-      // КАРТ ДЭЭР ДАРАХАД: тухайн хүний ДЭЛГЭРЭНГҮЙ самбар (профайл) ШУУД
-      // нээгдэнэ — өмнөх зан төлөв. Зэрэгцээд гэр бүлийн аккордеон ажиллаж,
-      // өмнөх хүний хүүхдүүд хураагдаж, энэ хүний гэр бүл нээгдэнэ.
-      // (Аккордеон нь серверээс open=<id>-ээр шинэ layout татдаг тул background-д
-      // явна — профайл самбар үүнээс хүлээхгүй, тэр даруй гарна.)
+      // КАРТ ДЭЭР ДАРАХАД: модыг ДАХИН ЗУРАХГҮЙ/ТООЦООЛОХГҮЙ — зөвхөн
+      // профайл самбар санах ойгоос шууд нээгдэж, камер тэр хүн рүү зөөлөн
+      // гулсана (smooth pan/zoom). Гэр бүл сэлгэх бол картын давхар даралт.
       selected = id;
+      render();            // сонголтын хүрээ/шар шугам (DOM л, сервергүй)
       openDetail(id);
-      window.__accordion(id);
+      panTo(id);
     });
     $('cards').addEventListener('dblclick', e => {
       const card = e.target.closest('.card');
@@ -1563,6 +1570,39 @@ function genitiveName(name) {
   }
 
   // ---------- дэлгэрэнгүй самбар ----------
+  // Серверийг хүлээхгүй, санах ойн (S.members + хамаатны зураглал) мэдээллээр
+  // профайлын үндсэн хэсгийг ТЭР ДАРУЙ зурна.
+  function drawQuickDetail(id, m) {
+    const panel = $('panel');
+    if (!panel || !m) return;
+    const av = m.photo || avatarUrl(m);
+    let h = '<h2>' + (av
+      ? '<img class="ava" src="' + escapeHtml(av) + '" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;vertical-align:middle">'
+      : '<span class="ava" style="background:' + (m.sex === 'f' ? '#d06a9a' : m.sex === 'm' ? '#4a90d9' : '#9aa7b5') + '">' +
+        (m.emoji ? escapeHtml(m.emoji) : escapeHtml(String(m.name || '?').charAt(0))) + '</span>') + ' ' +
+      escapeHtml(m.name) +
+      '<button class="ghost close" onclick="document.getElementById(\'panel\').classList.add(\'hidden\')">✕</button></h2>';
+    h += '<div class="kv"><b>Хүйс:</b> ' + (m.sex === 'm' ? 'Эрэгтэй' : m.sex === 'f' ? 'Эмэгтэй' : '?') + '</div>';
+    const myRel = viewerLabels();
+    const sr = myRel ? myRel.get(id) : null;
+    if (sr) h += '<div class="kv"><b>Таны харилцаа:</b> <span class="rpill" style="display:inline-block;margin:0;vertical-align:middle">' + escapeHtml(sr) + '</span></div>';
+    h += '<div class="kv"><b>Төрсөн:</b> ' + escapeHtml(m.birth_date || m.birth_year || '—') + '</div>';
+    const rows = (set) => [...(set || [])].map(x => byId.get(x)).filter(Boolean);
+    const chipRow = (title, arr) => '<div class="rel-h">' + title + '</div><div class="rel-p">' +
+      (arr.length ? arr.map(x => '<div class="rel-unit"><span onclick="window.__goto(' + x.id + ')">' +
+        escapeHtml(x.name) + '</span></div>').join('')
+        : '<span style="opacity:.5;border-style:dashed">байхгүй</span>') + '</div>';
+    const sib = new Set();
+    for (const p of parOf.get(id) || []) for (const k of kidsOf.get(p) || []) if (k !== id) sib.add(k);
+    h += chipRow('Эцэг / Эх', rows(parOf.get(id)));
+    h += chipRow('Ах / Дүү', rows(sib));
+    h += chipRow('Хань', rows(spOf.get(id)));
+    h += chipRow('Хүүхэд', rows(kidsOf.get(id)));
+    h += '<div class="kv" style="opacity:.55;font-size:12px;margin-top:10px">⏳ Дэлгэрэнгүй мэдээлэл ачаалж байна…</div>';
+    panel.classList.remove('hidden');
+    panel.innerHTML = h;
+  }
+
   async function openDetail(id) {
     const panel = $('panel');
     const local = byId.get(id);
@@ -1580,6 +1620,10 @@ function genitiveName(name) {
         '<div class="locked">Нийтийн холбоо: намтар, утас, цомог хаагдсан байна.</div>';
       return;
     }
+    // ① САНАХ ОЙГООС ШУУД: серверийн хариуг хүлээхгүй — нэр, зураг, хүйс,
+    // харилцаа, төрсөн, эцэг/эх, ах/дүү, хань, хүүхдийг шууд зурна. Дараа нь
+    // серверээс бүрэн мэдээлэл ирэхэд (намтар, цомог, товчнууд) солигдоно.
+    drawQuickDetail(id, local);
     let d = null;
     try { d = await getJson('/api/members/' + id); } catch (e) { toast(e.message); return; }
     const m = d.member;
@@ -1699,6 +1743,30 @@ function genitiveName(name) {
     view.y = vp.clientHeight / 2 - (n.y + 40) * view.z;
     applyView();
   }
+
+  // ЗӨӨЛӨН ПАН/ЗУМ: модыг дахин зурахгүй — зөвхөн камерыг (transform)
+  // гулсуулж, тухайн хүнийг дэлгэцийн голд авчирна. Хэт жижиг зумтай бол
+  // уншигдахуйц хэмжээ хүртэл бага зэрэг ойртуулна.
+  let glideT = 0;
+  function panTo(id) {
+    const n = (activeLayout().nodes || []).find(x => x.id === id) || nodes.get(id);
+    const vp = $('viewport');
+    if (!n || !vp) return;
+    const w = $('world');
+    const vw = vp.clientWidth, vh = vp.clientHeight;
+    const zRead = Math.max(0.62, Math.min(1.05, vw / 430));
+    const z = Math.max(view.z, zRead);
+    if (w) {
+      w.classList.add('glide');
+      clearTimeout(glideT);
+      glideT = setTimeout(() => w.classList.remove('glide'), 620);
+    }
+    view.z = z;
+    view.x = vw / 2 - (n.x + (n.w || 156) / 2) * z;
+    view.y = vh / 2 - (n.y + 40) * z;
+    applyView();
+  }
+  window.__panTo = panTo;
 
   // Дарсан хүн дээрээ УНШИГДАХУЙЦ зумтай төвлөрнө. Өмнө нь `fit()` бүх мод
   // (5000px) дэлгэцэнд багтааж жижигрүүлдэг байсан тул утсан дээр «өөрийн
