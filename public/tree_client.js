@@ -1724,11 +1724,13 @@ function genitiveName(name) {
       pencil: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
       image: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-4.6-4.6L7 20"/></svg>',
       cal: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg>',
-      trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>'
+      trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>',
+      camera: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg>'
     };
     h += '<div class="pbtns">';
     if (m.e) h += '<button class="pfull" onclick="window.__menu(event,' + m.id + ')">' + ICO.plus + 'Садан нэмэх</button>';
     if (m.e) h += '<button class="psoft" onclick="window.__edit(' + m.id + ')">' + ICO.pencil + 'Засах</button>';
+    if (m.e) h += '<button class="psoft" onclick="window.__coverPick(' + m.id + ')">' + ICO.camera + 'Нүүр зураг</button>';
     if (m.e) h += '<button class="psoft" onclick="window.__addMemPhoto(' + m.id + ')">' + ICO.image + 'Зураг</button>';
     if (m.e) h += '<button class="psoft" onclick="window.__addMemEvent(' + m.id + ')">' + ICO.cal + 'Үйл явдал</button>';
     if (m.e && isBoss) h += '<button class="pdanger" onclick="window.__del(' + m.id + ')">' + ICO.trash + 'Устгах</button>';
@@ -3524,6 +3526,31 @@ function genitiveName(name) {
         f.value = '';
       } catch (e) { toast(e.message); }
     };
+  };
+  // НҮҮР ЗУРАГ (cover): файлаас сонгож, картны харьцаагаар ЧИРЖ ЗӨӨХ + ZOOM
+  // хийж тааруулна (cropModal), дараа нь сервер рүү илгээнэ.
+  window.__coverPick = (id) => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+    inp.onchange = async () => {
+      try {
+        if (!inp.files || !inp.files[0]) return;
+        const url = await cropPhoto(inp.files[0]);   // pan & zoom тайруулагч
+        if (url) await window.__coverSave(id, url);
+      } catch (e) { toast(e.message || 'Энэ зургийг тайрч чадсангүй'); }
+      finally { inp.remove(); }
+    };
+    inp.click();
+  };
+  window.__coverSave = async (id, url) => {
+    try {
+      await post('/api/members/' + id + '/cover', { url });
+      const mm = byId.get(id);
+      if (mm) { mm.photo = url; render(); }
+      toast('Нүүр зураг солигдлоо ✓');
+      window.__detail(id);
+    } catch (e) { toast(e.message); }
   };
   window.__saveMemPhoto = async (id) => {
     try {
