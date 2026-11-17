@@ -284,25 +284,6 @@ export function buildFullLayout({ members, rel, vis, viewerId, openId, closedKid
     // Баярсайхан дээр дарахад Сүхбатын эхнэр, Сүхбат дээр дарахад
     // Эрдэнэчимэг гарахгүй.
     for (const k2 of sibs) if (!keep.has(k2)) keep.add(k2);
-    // ХАДМЫН ТАЛ БҮТНЭЭРЭЭ: хань/бэрийн эцэг/эхийн БҮХ хүүхэд (эхнэрийн
-    // ах/дүү) + тэдний хань ба хүүхдүүд. Өмнө нь зөвхөн ах/дүү нь дангаараа
-    // орж, шугам нь «Цэнд дээр очиж тасардаг» байв.
-    if (openTarget === viewerId) {
-      const inLawPars = new Set();
-      for (const s2 of spousesOf(viewerId)) for (const p2 of rel.par.get(s2) || []) inLawPars.add(p2);
-      for (const p2 of inLawPars) {
-        for (const k2 of rel.kids.get(p2) || []) {
-          if (!visSet.has(k2)) continue;
-          keep.add(k2);
-          for (const s3 of spousesOf(k2)) if (visSet.has(s3)) keep.add(s3);
-          for (const g3 of rel.kids.get(k2) || []) {
-            if (!visSet.has(g3)) continue;
-            keep.add(g3);
-            for (const s4 of spousesOf(g3)) if (visSet.has(s4)) keep.add(s4);
-          }
-        }
-      }
-    }
     // ③ ЗӨВХӨН шууд хүүхдүүд — хань нь (бэр/хүргэн) ХАРАГДАХГҮЙ:
     // Баярсайхан дээр дарахад 3 хүүхдийн (Мягмардорж, Дөлгөөн, Маралмаа)
     // эхнэр/нөхөр нуугдана.

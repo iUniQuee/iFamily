@@ -768,16 +768,14 @@
       // Хань ба хадмын тал (эхнэр/нөхрийн эцэг эх, өвөг, ах дүү) — нил ягаан
       for (const sp of spOf.get(relSel) || []) {
         relSp.add(sp);
+        // ЗӨВХӨН 2 түвшин: эцэг/эх + тэдний бусад хүүхэд (ах/дүү).
+        // Өвөг, ах/дүүгийн хүүхэд нь ӨНГӨГҮЙ — нил ягаан болохгүй.
         for (const p of parOf.get(sp) || []) {
           relIn.add(p);
-          for (const g of parOf.get(p) || []) relIn.add(g);
           for (const k of kidsOf.get(p) || []) if (k !== sp) relIn.add(k);
         }
       }
     }
-    // ХАНЬ/ХАДМЫН ТАЛ (эхнэр/нөхөр, тэдний эцэг/эх, ах/дүү) нь ЮУНЫ ӨМНӨ
-    // нил ягаан — эс бөгөөс хадмын ах/дүү «ах/дүү»-гийн бүдэг цэнхэр болж,
-    // Гансүх & Эрдэнэцэгээс Цэнд рүү явсан шугам цэнхэр харагддаг байв.
     const relClass = (c) => (relSp.has(c) || relIn.has(c)) ? ' link-sp'
       : (descSet && descSet.has(c)) ? ' link-kid'
       : relSib.has(c) ? ' link-sib'
@@ -920,8 +918,8 @@
         // хамаатаны өнгө бүх эгч/ах, авга/нагац руу тархахгүй.
         const busCls = allUp ? ' link-up'
           : anyUp ? ''
-            : anySp ? ' link-sp'          // хань/хадмын тал — нил ягаан
-              : anyUncle ? ' link-uncle'
+            : anyUncle ? ' link-uncle'
+              : anySp ? ' link-sp'
                 : anySib ? ' link-sib'
                   : anyKid ? ' link-kid' : '';
         // ШАР нь ЗӨВХӨН дээшээ үе (эцэг/эх, эмээ/өвөө …). Ах/дүү нь өөрийн
