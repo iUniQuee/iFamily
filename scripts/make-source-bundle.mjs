@@ -36,6 +36,7 @@ function walk(dir) {
 }
 walk(join(ROOT, 'src'));
 walk(join(ROOT, 'scripts'));
+walk(join(ROOT, 'functions'));
 walk(join(ROOT, 'public'));
 for (const f of ['package.json', 'wrangler.jsonc', 'site-manifest.json', 'server.js',
   'README.md', 'D1-SCHEMA.sql']) {
