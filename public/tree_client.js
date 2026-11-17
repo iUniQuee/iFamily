@@ -1303,7 +1303,9 @@
       selected = id;
       render();            // сонголтын хүрээ/шар шугам (DOM л, сервергүй)
       openDetail(id);
-      panTo(id);
+      // Камерыг ДАРААГИЙН фрэймд зөөнө — профайл самбар нээгдэж дэлгэцийн
+      // өргөн өөрчлөгдсөний дараа төв нь зөв тооцоологдоно.
+      requestAnimationFrame(() => panTo(id));
     });
     $('cards').addEventListener('dblclick', e => {
       const card = e.target.closest('.card');
