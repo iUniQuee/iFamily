@@ -158,15 +158,32 @@ export const MIGRATIONS = [
   "DELETE FROM default_avatars WHERE slot='n_any'"
 ];
 
+// Схем/миграцийн хувилбар. SCHEMA эсвэл MIGRATIONS-д ӨӨРЧЛӨЛТ оруулбал
+// энэ дугаарыг заавал нэмэгдүүлнэ — тэгвэл бүх isolate шинээр нэг удаа
+// schema-г гүйцэтгэж, дараа нь хурдан замаар (1 уншилт) ажиллана.
+const SCHEMA_V = '2026-11-17.1';
+
 export async function initDb(env) {
   if (ready) return;
-  // D1 exec олон мөртэй statement-ийг зөв хуваадаггүй тул statement тус бүрийг
-  // тусад нь биелүүлнэ (схемд ';' орсон утга байхгүй)
+  // ① ХУРДАН ЗАМ: схем аль хэдийн бэлэн эсэхийг 1 уншилтаар шалгана.
+  // Өмнө нь cold isolate бүрт 30+ D1 statement (CREATE TABLE + ALTER) явдаг
+  // байсан нь Pages Functions дээр хүсэлт бүрийг ~1.4с удаашруулж байв.
+  try {
+    const row = await get(env, "SELECT value FROM design WHERE key='schema_v'");
+    if (row && row.value === SCHEMA_V) { ready = true; return; }
+  } catch (e) { /* design хүснэгт байхгүй (анхны ажиллагаа) — доор үүсгэнэ */ }
+  // ② Бүрэн схем + миграц (зөвхөн нэг удаа). D1 exec олон мөртэй statement-ийг
+  // зөв хуваадаггүй тул statement тус бүрээр биелүүлнэ.
   const stmts = SCHEMA.split(';').map(s => s.trim()).filter(Boolean);
   for (const s of stmts) await env.DB.prepare(s).run();
   for (const m of MIGRATIONS) {
     try { await env.DB.prepare(m).run(); } catch (e) { /* багана аль хэдийн байна */ }
   }
+  try {
+    await run(env,
+      "INSERT INTO design(key,value) VALUES('schema_v',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+      SCHEMA_V);
+  } catch (e) { /* design бичих боломжгүй — дараагийн хүсэлтэд дахин оролдоно */ }
   ready = true;
 }
 
