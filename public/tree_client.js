@@ -3179,7 +3179,8 @@ function genitiveName(name) {
       const r = await post('/api/members/' + id + '/update', data);
       window.__closeModal();
       toast(r.points ? 'Хадгаллаа ✓ +' + r.points + ' оноо' : 'Хадгаллаа ✓');
-      await refresh();
+      // Модны төлөв (нээсэн салаа, сонголт, камер) ХЭВЭЭР — зөвхөн өгөгдөл шинэчилнэ
+      await refreshKeepTree();
       openDetail(id);
     } catch (e) { toast(e.message); }
   };
@@ -3597,7 +3598,9 @@ function genitiveName(name) {
     try {
       await post('/api/members/' + id + '/cover', { url });
       const mm = byId.get(id);
-      if (mm) { mm.photo = url; render(); }
+      if (mm) mm.photo = url;
+      // Мод дахин зурагдахгүй — зөвхөн тухайн картын зургийг солино
+      setCardPhoto(id, url);
       toast('Нүүр зураг солигдлоо ✓');
       window.__detail(id);
     } catch (e) { toast(e.message); }
@@ -3608,7 +3611,7 @@ function genitiveName(name) {
       window.__closeModal();
       // Нүүр зураг хоосон байсан бол сервер эхний зургийг нүүр болгоно — карт дээр шууд харагдана
       const mm = byId.get(id);
-      if (mm && r.photo) { mm.photo = r.photo; if (typeof render === 'function') render(); }
+      if (mm && r.photo) { mm.photo = r.photo; setCardPhoto(id, r.photo); }
       toast(r.points ? 'Нэмэгдлээ ✓ +' + r.points + ' оноо' : 'Нэмэгдлээ ✓');
       window.__detail(id);
     } catch (e) { toast(e.message); }
@@ -4305,6 +4308,51 @@ function genitiveName(name) {
   };
 
   // ---------- нэмэлт ----------
+  // ЗӨВХӨН тухайн картын зургийг солино — мод дахин зурагдахгүй, камер
+  // хөдлөхгүй, нээсэн/хумисан салаа хэвээр. (Зураг хадгалсны дараа ашиглана.)
+  function setCardPhoto(id, url) {
+    if (!id || !url) return;
+    const card = document.querySelector('#cards .card[data-id="' + id + '"]');
+    if (!card) return;
+    const ava = card.querySelector('.ava');
+    if (!ava) return;
+    if (ava.tagName === 'IMG') {
+      ava.src = url;                    // зургийг л сольсон — layout хөндөхгүй
+    } else {
+      const im = document.createElement('img');
+      im.className = 'ava'; im.alt = ''; im.src = url; im.loading = 'lazy';
+      ava.replaceWith(im);
+    }
+  }
+  window.__setCardPhoto = setCardPhoto;
+
+  // Модны ОДООГИЙН төлөвийг (нээсэн салаа, сонгосон хүн, камерын байрлал)
+  // хадгалан өгөгдлийг шинэчилнэ — мэдээлэл засах үед мод дэлгэгдэхгүй.
+  async function refreshKeepTree() {
+    const keep = {
+      open: fullOpen, closed: fullClosed, sel: selected, focus: focus,
+      view: { x: view.x, y: view.y, z: view.z }
+    };
+    try {
+      layoutCache.clear();
+      const root = S.root ? '?root=' + S.root : '';
+      S = await getJson('/api/state' + root);
+      compile();
+      applyDesign();
+      fullL = null; fullSeq++;
+      fullOpen = keep.open; fullClosed = keep.closed;
+      focus = keep.focus; selected = keep.sel;
+      fitted = true;                       // дахин fit()/төвлөрөл хийхгүй
+      if (focus == null) {
+        await loadFullLayout({ keepView: true });
+        fullOpen = keep.open; fullClosed = keep.closed; selected = keep.sel;
+      }
+      render();
+      view.x = keep.view.x; view.y = keep.view.y; view.z = keep.view.z;
+      applyView();                         // камер ЯГ хэвээр
+    } catch (e) { toast(e.message); }
+  }
+
   window.__clearLayoutCache = () => { layoutCache.clear(); };
   window.__logout = async () => { await post('/api/logout', {}); location.href = '/'; };
   function wrapErr(msg) { return new Error(msg); }
