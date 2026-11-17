@@ -1596,6 +1596,15 @@ async function api(req, env, url, path) {
       const mem = ctx.members.find(x => x.id === id);
       if (!mem) throw httpErr(404, 'Гишүүн олдохгүй');
       const b = await readBody(req);
+      // Засах форм нь state-ийн lazy линкийг буцааж илгээдэг — тэр үед хадгалагдсан
+      // бодит зургийг хөндөхгүй.
+      const nextPhoto = (() => {
+        if (b.photo === undefined) return normPhoto(mem.photo || '');
+        const raw = String(b.photo || '');
+        // Хоосон утга ирвэл зөвхөн «зургийг устгах» гэж ЗОРИУД илгээсэн үед л устгана
+        if (!raw && mem.photo && b.photo_dirty !== true) return normPhoto(mem.photo || '');
+        return LAZY_PHOTO_RE.test(raw) ? normPhoto(mem.photo || '') : normPhoto(raw);
+      })();
       await run(
         env,
         `UPDATE members SET name=?, sex=?, birth_year=?, birth_date=?, birth_place=?, clan=?,
@@ -1613,19 +1622,17 @@ async function api(req, env, url, path) {
         String(b.phone !== undefined ? b.phone : mem.phone).trim(),
         String(b.bio !== undefined ? b.bio : mem.bio || ''),
         String(b.honors !== undefined ? b.honors : mem.honors || '').trim().slice(0, 2000),
-        // Засах форм нь state-ийн lazy линкийг буцааж илгээдэг — тэр үед хадгалагдсан
-        // бодит зургийг хөндөхгүй.
-        (() => {
-          if (b.photo === undefined) return normPhoto(mem.photo || '');
-          const raw = String(b.photo || '');
-          // Хоосон утга ирвэл зөвхөн «зургийг устгах» гэж ЗОРИУД илгээсэн үед л устгана
-          if (!raw && mem.photo && b.photo_dirty !== true) return normPhoto(mem.photo || '');
-          return LAZY_PHOTO_RE.test(raw) ? normPhoto(mem.photo || '') : normPhoto(raw);
-        })(),
+        nextPhoto,
         normDeath(b.death_date !== undefined ? b.death_date : mem.death_date || ''),
         normEmoji(b.emoji !== undefined ? b.emoji : mem.emoji || ''),
         id
       );
+      // Зураг солигдвол хуучин тааруулалтыг (zoom/X/Y) хүчингүй болгоно —
+      // шинэ зураг өөр хэмжээтэй тул хуучин параметр буруу харагдана.
+      if (nextPhoto !== normPhoto(mem.photo || '')) {
+        await run(env,
+          'UPDATE members SET photo_zoom=NULL, photo_cx=NULL, photo_cy=NULL, photo_ar=NULL WHERE id=?', id);
+      }
       // Оноо②③: засахад шинээр өгөхгүй — зөвхөн хоосон→дүүрсэн талбарт л оноо
       const freshU = await get(env, 'SELECT * FROM members WHERE id=?', id);
       const gotU = await scoreMember(env, user, id, mem, freshU);
