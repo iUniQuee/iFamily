@@ -1525,8 +1525,11 @@ async function api(req, env, url, path) {
       const mem = ctx.members.find(x => x.id === id);
       if (!mem || !ctx.vis.has(id)) throw httpErr(404, 'Гишүүн олдохгүй');
       const hasBio = ctx.isAdmin || ctx.bio.has(id);
-      const photos = await all(env, 'SELECT id, url, created_at FROM member_photos WHERE member_id=? ORDER BY id', id);
-      const events = await all(env, 'SELECT id, event_date, title, photo FROM member_events WHERE member_id=? ORDER BY event_date, id', id);
+      // Зураг ба үйл явдлыг ЗЭРЭГ татна — профайл нээгдэх хугацааг багасгана
+      const [photos, events] = await Promise.all([
+        all(env, 'SELECT id, url, created_at FROM member_photos WHERE member_id=? ORDER BY id', id),
+        all(env, 'SELECT id, event_date, title, photo FROM member_events WHERE member_id=? ORDER BY event_date, id', id)
+      ]);
       return json({
         member: sanitize(mem, hasBio, canEdit(user, id, ctx.trMap)),
         relations: relationsOf(ctx, id),
