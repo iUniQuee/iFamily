@@ -1756,11 +1756,16 @@ function genitiveName(name) {
     if (!n || !vp) return;
     const w = $('world');
     const vw = vp.clientWidth, vh = vp.clientHeight;
-    // Профайл самбар нээлттэй үед баруун талыг эзэлдэг — картыг ХАРАГДАХ
-    // хэсгийн голд тавина (эс бөгөөс самбарын цаана нуугдана).
+    // Профайл самбар нь viewport-ийг ӨӨРӨӨ нарийсгадаг (flex) — тэгвэл дахин
+    // хасахгүй. Зөвхөн viewport дээрээ ДАВХАРЛАСАН (overlay) үед л хасаж,
+    // картыг харагдах хэсгийн голд тавина.
     const pe = $('panel');
-    const panelW = (pe && !pe.classList.contains('hidden') && pe.offsetParent !== null)
-      ? Math.min(vw * 0.6, pe.getBoundingClientRect().width) : 0;
+    let panelW = 0;
+    if (pe && !pe.classList.contains('hidden') && pe.offsetParent !== null) {
+      const pr = pe.getBoundingClientRect(), vr = vp.getBoundingClientRect();
+      const overlays = pr.left < vr.left + vr.width - 4 && pr.width > 40;
+      if (overlays) panelW = Math.min(vw * 0.6, pr.width);
+    }
     const availW = Math.max(240, vw - panelW);
     const zRead = Math.max(0.62, Math.min(1.05, availW / 430));
     const z = Math.max(view.z, zRead);
