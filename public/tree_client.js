@@ -682,8 +682,9 @@
     const z = Math.max(1, Number(m.pz) || 1);
     const cx = m.pcx == null ? 0.5 : Math.min(1, Math.max(0, Number(m.pcx)));
     const cy = m.pcy == null ? 0.5 : Math.min(1, Math.max(0, Number(m.pcy)));
+    // «cover»: зураг хүрээг ЯГ дүүргэх хэмжээ (цагаан зай гарахгүй)
     let cw, ch;
-    if (W / H > ar) { ch = H; cw = H * ar; } else { cw = W; ch = W / ar; }
+    if (W / H > ar) { cw = W; ch = W / ar; } else { ch = H; cw = H * ar; }
     const dw = cw * z, dh = ch * z;
     const left = -(cx * Math.max(0, dw - W));
     const top = -(cy * Math.max(0, dh - H));
@@ -2693,7 +2694,8 @@ function genitiveName(name) {
       const dims = () => {
         const w = W(), h = H();
         let cw = w, ch = h;
-        if (ar) { if (w / h > ar) { ch = h; cw = h * ar; } else { cw = w; ch = w / ar; } }
+        // «cover» — 1× үед зураг хүрээг бүрэн дүүргэнэ
+        if (ar) { if (w / h > ar) { cw = w; ch = w / ar; } else { ch = h; cw = h * ar; } }
         return { dw: cw * zoom, dh: ch * zoom };
       };
       const paint = () => {
