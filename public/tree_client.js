@@ -686,6 +686,12 @@
     const isDesc = curDesc && curDesc.has(m.id);
     if (isAsc) cls.push('asc');
     else if (isDesc) cls.push('desc');
+    // ТОДРУУЛГА (focus): сонгосон хүний ХАНЬ ба шууд ХҮҮХДҮҮД зөөлөн алтан
+    // хүрээтэй болно. Гар утсан дээр карт дарахад цонх нээхгүй — зөвхөн энэ.
+    if (selected != null && selected !== m.id) {
+      const kinSet = spOf.get(selected) || new Set();
+      if (kinSet.has(m.id) || (kidsOf.get(selected) || new Set()).has(m.id)) cls.push('kin');
+    }
 
     const age = ageOf(m);
     let meta = escapeHtml(yearOf(m));
@@ -1301,8 +1307,14 @@
       // профайл самбар санах ойгоос шууд нээгдэж, камер тэр хүн рүү зөөлөн
       // гулсана (smooth pan/zoom). Гэр бүл сэлгэх бол картын давхар даралт.
       selected = id;
-      render();            // сонголтын хүрээ/шар шугам (DOM л, сервергүй)
-      openDetail(id);
+      render();            // сонголт + хань/хүүхдийн тодруулга (DOM л, сервергүй)
+      // КОМПЬЮТЕР (≥768px): дэлгэрэнгүй самбар нээгдэж, камер зөөлөн гулсана.
+      // ГАР УТАН (<768px): цонх НЭЭГДЭХГҮЙ — зөвхөн тодруулга + камер; профайлыг
+      // зөвхөн карт дээрх ⓘ товчоор нээнэ. Самбар аль хэдийн нээлттэй бол
+      // (жишээ нь чипээр шилжих) агуулгыг нь шинэчилнэ — хуучин мэдээлэл үлдэхгүй.
+      const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+      const panelOpen = !$('panel').classList.contains('hidden');
+      if (isDesktop || panelOpen) openDetail(id);
       // Камерыг ХОЁР фрэймийн дараа зөөнө — профайл самбар нээгдэж flex
       // хэмжээ (viewport-ийн өргөн) БҮРЭН шинэчлэгдсэний дараа төв нь зөв
       // тооцоологдоно (нэг rAF-д хэмжээ хуучин хэвээр байж, карт хажуу тийш

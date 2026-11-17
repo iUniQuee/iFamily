@@ -435,6 +435,8 @@ button.btn-ok:hover { filter: brightness(.9); }
 /* 4 өнгийн тодруулга (карт дарахад):
    дээд үе — АЛТ, хүүхэд — НОГООН, ах/дүү — ЦЭНХЭР, хань/бэр-хүргэн — НИЛ ЯГААН */
 .card.asc .box { box-shadow: 0 0 0 1px rgba(245,158,11,.4), 0 6px 16px rgba(15,23,42,.14); }
+/* Сонгосон хүний хань ба шууд хүүхдүүд — зөөлөн алтан тодруулга (focus) */
+.card.kin .box { box-shadow: 0 0 0 2px rgba(245,158,11,.45), 0 6px 16px rgba(15,23,42,.12); }
 .card.desc .box, .card.kin .box { outline: none; }
 .link-s.link-up, .link-c.link-up { stroke: #F59E0B; stroke-width: 2.5; }
 .link-s.link-down, .link-c.link-down,
@@ -1287,7 +1289,7 @@ export function appPage({ state, theme = 'blue', card = 'round' }) {
 <div id="menu" class="hidden"></div>
 <script>window.__STATE__ = ${s};</script>
 <script>${bootScript}</script>
-<script src="/tree_client.js?v=483"></script>
+<script src="/tree_client.js?v=484"></script>
 </body>
 </html>`;
 }
