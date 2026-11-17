@@ -1591,52 +1591,6 @@ function genitiveName(name) {
   }
 
   // ---------- дэлгэрэнгүй самбар ----------
-  // Серверийг хүлээхгүй, санах ойн (S.members + хамаатны зураглал) мэдээллээр
-  // профайлыг ТЭР ДАРУЙ бүтнээр зурна: хүйс, харилцаа, төрсөн/нас барсан, овог,
-  // төрсөн газар, утас, гавьяа, намтар болон эцэг/эх, ах/дүү, хань, хүүхэд.
-  function drawQuickDetail(id, m) {
-    const panel = $('panel');
-    if (!panel || !m) return;
-    const av = m.photo || avatarUrl(m);
-    const pat = patronymicOf(id);
-    const kv = (k, v) => v ? '<div class="kv"><b>' + k + ':</b> ' + v + '</div>' : '';
-    let h = '<h2>' + (av
-      ? '<img class="ava" src="' + escapeHtml(av) + '" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;vertical-align:middle">'
-      : '<span class="ava" style="background:' + (m.sex === 'f' ? '#d06a9a' : m.sex === 'm' ? '#4a90d9' : '#9aa7b5') + '">' +
-        (m.emoji ? escapeHtml(m.emoji) : escapeHtml(String(m.name || '?').charAt(0))) + '</span>') + ' ' +
-      (pat ? '<span class="pat">' + escapeHtml(pat) + '</span> ' : '') + escapeHtml(m.name) +
-      '<button class="ghost close" onclick="document.getElementById(\'panel\').classList.add(\'hidden\')">✕</button></h2>';
-    h += '<div class="kv"><b>Хүйс:</b> ' + (m.sex === 'm' ? 'Эрэгтэй' : m.sex === 'f' ? 'Эмэгтэй' : '?') + '</div>';
-    const myRel = viewerLabels();
-    const sr = myRel ? myRel.get(id) : null;
-    if (sr) h += '<div class="kv"><b>Таны харилцаа:</b> <span class="rpill" style="display:inline-block;margin:0;vertical-align:middle">' + escapeHtml(sr) + '</span></div>';
-    h += '<div class="kv"><b>Төрсөн:</b> ' + escapeHtml(m.birth_date || m.birth_year || '—') +
-      (m.alive === 0 ? ' <span style="color:var(--danger)">( нас барсан)</span>' : '') + '</div>';
-    h += kv('Нас барсан', m.death_date ? escapeHtml(m.death_date) : '');
-    h += kv('Ургийн овог', m.clan ? escapeHtml(m.clan) : '');
-    h += kv('Төрсөн газар', m.birth_place ? escapeHtml(m.birth_place) : '');
-    h += kv('Утас', m.phone ? escapeHtml(m.phone) : '');
-    h += kv('Гавьяа', m.honors ? escapeHtml(m.honors) : '');
-    if (m.bio) h += '<div class="kv"><b>Намтар:</b><br>' + escapeHtml(m.bio).replace(/\n/g, '<br>') + '</div>';
-    const rows = (set) => [...(set || [])].map(x => byId.get(x)).filter(Boolean);
-    const kinRel = labelsFrom(id) || null;
-    const chip = (x) => '<div class="rel-unit"><span onclick="window.__goto(' + x.id + ')">' + escapeHtml(x.name) +
-      (kinRel && kinRel.get(x.id) && kinRel.get(x.id) !== 'Хамаатан' && kinRel.get(x.id) !== 'Энэ хүн'
-        ? ' <b style="color:#2fae6a">(' + escapeHtml(kinRel.get(x.id)) + ')</b>' : '') +
-      ' <i style="opacity:.6">' + escapeHtml(String(x.birth_date ? x.birth_date.slice(0, 4) : (x.birth_year || ''))) + '</i></span></div>';
-    const chipRow = (title, arr) => '<div class="rel-h">' + title + '</div><div class="rel-p">' +
-      (arr.length ? arr.map(chip).join('')
-        : '<span style="opacity:.5;border-style:dashed">байхгүй</span>') + '</div>';
-    const sib = new Set();
-    for (const p2 of parOf.get(id) || []) for (const k of kidsOf.get(p2) || []) if (k !== id) sib.add(k);
-    h += chipRow('Эцэг / Эх', rows(parOf.get(id)));
-    h += chipRow('Ах / Дүү', rows(sib));
-    h += chipRow('Хань', rows(spOf.get(id)));
-    h += chipRow('Хүүхэд', rows(kidsOf.get(id)));
-    panel.classList.remove('hidden');
-    panel.innerHTML = h;
-  }
-
   async function openDetail(id) {
     const panel = $('panel');
     const local = byId.get(id);
@@ -1654,13 +1608,16 @@ function genitiveName(name) {
         '<div class="locked">Нийтийн холбоо: намтар, утас, цомог хаагдсан байна.</div>';
       return;
     }
-    // ① ТЭР ДАРУЙ (0ms): өмнө нээж байсан бол кэшлэсэн БҮРЭН HTML-ийг (зураг,
-    // үйл явдал, товчнууд хамт) шууд тавина; эс бөгөөс санах ойн бүх мэдээллээр
-    // (намтар, гавьяа, төрсөн газар, утас г.м.) бүтнээр зурна.
+    // ПРОФАЙЛ НЭГ Л УДАА, БҮТНЭЭР зурагдана — эхлээд хагас мэдээлэл (нэр, хүйс…)
+    // гаргаад дараа нь зураг/товч/хамаатны насаар нөхөж сольдог хоёр үе шат
+    // БҮРМӨСӨН хасагдав.
+    //  ① Кэш байвал — өмнө нээсэн БҮРЭН HTML (зураг, үйл явдал, Эцэг/Эх, Хань,
+    //     Хүүхдийн нас ба ✕ товч, Засах/Устгах, Билгийн жил бүгд хамт) шууд.
+    //  ② Кэшгүй бол серверийн бүрэн өгөгдлийг хүлээж, дараа нь нэг удаа зурна.
     const cachedHtml = detailHtmlCache.get(id);
     const scrollKeep = panel.scrollTop;
     if (cachedHtml) { panel.innerHTML = cachedHtml; panel.scrollTop = scrollKeep; }
-    else drawQuickDetail(id, local);
+    else panel.innerHTML = '';
     let d = null;
     try { d = await getJson('/api/members/' + id); } catch (e) { toast(e.message); return; }
     const m = d.member;
