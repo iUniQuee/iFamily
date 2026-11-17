@@ -629,13 +629,7 @@
     return (focus != null && focusL && focusL.focus === focus) ? focusL : S.layout;
   }
   function shownIds() {
-    // ХАРАГДАХ КАРТУУД = АШИГЛАЖ БУЙ байрлалын (activeLayout) гишүүд.
-    // «Бүтэн мод»-ын fullL нь S.layout-аас олон хүнтэй байж болох тул зөвхөн
-    // nodes (state-ийн анхны байрлал) дээр тулгуурлавал мод 18 карт дээр
-    // тасарч, 160 гишүүнтэй гэр бүлд «2-3 хүн харагдана» гэсэн алдаа гарна.
-    const curL = activeLayout() || {};
-    const curNodes = curL.nodes || [];
-    let ids = new Set(curNodes.length ? curNodes.map(n => n.id) : nodes.keys());
+    let ids = new Set(nodes.keys());
     if (focus != null && !showHidden) {
       const fs = focusSet(focus);
       ids = new Set([...ids].filter(id => fs.has(id) || revealed.has(id)));
@@ -1086,11 +1080,10 @@
     const p = $('panel'); if (p) p.classList.add('hidden');
     // Нэвтрэхэд/«Үндсэн мод»-оор ороход өөрийн (нээсэн) хүний салбар
     // шууд нээлттэй байна — тэр хүн ах/дүү нарынхаа хамгийн баруун захad гарна.
-    // «Үндсэн мод» = БҮХ гишүүн (160 хүнтэй гэр бүлд бүгд харагдана).
-    // Өмнө нь энд openId тавьдаг байсан тул сервер зөвхөн нэг салбарыг
-    // (эцэг/эх + шууд хүүхдүүд) буцааж, «2-3 хүн л харагдана» гэсэн алдаа гардаг.
-    // Салбарыг accordion-оор нээх нь карт дээр дарахад ажилласaар байна.
-    fullOpen = null;
+    // ACCORDION (v453-ын ажиллаж байсан логик): анх ачаалахад нэвтэрсэн
+    // хэрэглэгчийн (эсвэл «Үндсэн мод»-оор дарсан хүний) гэр бүл л нээлттэй.
+    // Зөвхөн НЭГ хүний эхнэр/нөхөр + хүүхдүүд харагдана; бусад нь хаалттай.
+    fullOpen = (openId != null) ? openId : null;
     fullClosed = false;
     render();
     await loadFullLayout();
