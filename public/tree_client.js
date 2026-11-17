@@ -674,12 +674,42 @@
     const on = (fullL.nodes || []).find(x => x.id === fullL.open);
     return !!on && on.y === n.y && Math.abs(on.x - n.x) === 166;
   }
+  // Нүүр зургийн КАРТ доторх харагдац: zoom (1 = хүрээг яг дүүргэсэн) ба
+  // X/Y байрлал (0..1). Зургийг ТАЙРАХГҮЙ — зөвхөн хэмжээ/байрлалыг тооцно.
+  function photoBoxStyle(m, W, H) {
+    const ar = Number(m && m.par) || 0;
+    if (!ar) return 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;';
+    const z = Math.max(1, Number(m.pz) || 1);
+    const cx = m.pcx == null ? 0.5 : Math.min(1, Math.max(0, Number(m.pcx)));
+    const cy = m.pcy == null ? 0.5 : Math.min(1, Math.max(0, Number(m.pcy)));
+    let cw, ch;
+    if (W / H > ar) { ch = H; cw = H * ar; } else { cw = W; ch = W / ar; }
+    const dw = cw * z, dh = ch * z;
+    const left = -(cx * Math.max(0, dw - W));
+    const top = -(cy * Math.max(0, dh - H));
+    return 'position:absolute;left:' + left.toFixed(1) + 'px;top:' + top.toFixed(1) +
+      'px;width:' + dw.toFixed(1) + 'px;height:' + dh.toFixed(1) + 'px;max-width:none;object-fit:fill;';
+  }
+  // Дугуй avatar (профайл/жагсаалт) — мөн ижил хэмжээ/байрлалаар
+  function avaImgHtml(m, url, size) {
+    const src = escapeHtml(url);
+    const box = photoBoxStyle(m, size, size);
+    if (box.indexOf('width:100%') >= 0) {
+      return '<img class="ava" src="' + src + '" alt="" style="width:' + size + 'px;height:' + size +
+        'px;border-radius:50%;object-fit:cover;object-position:50% 20%;vertical-align:middle">';
+    }
+    return '<span style="position:relative;display:inline-block;width:' + size + 'px;height:' + size +
+      'px;border-radius:50%;overflow:hidden;vertical-align:middle;flex:0 0 auto">' +
+      '<img src="' + src + '" alt="" style="' + box + '"></span>';
+  }
+
   function cardHtml(m, n, shown) {
     const initial = String(m.name || '?').trim().charAt(0).toUpperCase();
     // Нүүр зураг байвал эхний үсэг/emoji-ний оронд ЗУРГАА харна
     const avUrl = m.photo || avatarUrl(m);
     const ava = avUrl
-      ? '<img class="ava" src="' + escapeHtml(avUrl) + '" alt="" loading="lazy" decoding="async">'
+      ? '<img class="ava" src="' + escapeHtml(avUrl) + '" alt="" loading="lazy" decoding="async" style="' +
+        photoBoxStyle(m, 140, 96) + '">'
       : '<div class="ava">' + (m.emoji ? escapeHtml(m.emoji) : escapeHtml(initial)) + '</div>';
     const cls = ['card', m.sex === 'f' ? 'f' : m.sex === 'm' ? 'm' : 'q'];
     const isDead = m.alive === 0 || !!(m.death_date && String(m.death_date).trim());
@@ -1618,7 +1648,7 @@ function genitiveName(name) {
     if (RO) {
       panel.classList.remove('hidden');
       panel.innerHTML = '<h2>' + (local.photo
-        ? '<img class="ava" src="' + escapeHtml(local.photo) + '" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;vertical-align:middle">'
+        ? avaImgHtml(local, local.photo, 34)
         : '<span class="ava" style="background:#9aa7b5">' + (local.emoji ? escapeHtml(local.emoji) : escapeHtml(String(local.name || '?').charAt(0))) + '</span>') + ' ' +
         escapeHtml(local.name) + '<button class="ghost close" onclick="document.getElementById(\'panel\').classList.add(\'hidden\')">✕</button></h2>' +
         '<div class="kv"><b>Төрсөн:</b> ' + escapeHtml(yearOf(local)) + '</div>' +
@@ -1669,7 +1699,7 @@ function genitiveName(name) {
       : '<span style="opacity:.5;border-style:dashed">байхгүй</span>';
     const avUrl = m.photo || avatarUrl(m);
     let h = '<h2>' + (avUrl
-      ? '<img class="ava" src="' + escapeHtml(avUrl) + '" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;vertical-align:middle">'
+      ? avaImgHtml(m, avUrl, 34)
       : '<span class="ava" style="background:' + (m.sex === 'f' ? '#d06a9a' : m.sex === 'm' ? '#4a90d9' : '#9aa7b5') + '">' +
         (m.emoji ? escapeHtml(m.emoji) : escapeHtml(String(m.name || '?').charAt(0))) + '</span>') + ' ' +
       (pat ? '<span class="pat">' + escapeHtml(pat) + '</span> ' : '') + escapeHtml(m.name) +
@@ -2619,12 +2649,17 @@ function genitiveName(name) {
   const CROP_OUT_W = 700;                      // гарах зургийн өргөн (2x retina)
   const CROP_MAX_CHARS = 600000;               // серверийн хүлээх дээд хэмжээ
   // Тааруулагч цонх: чирж зөөх + zoom. Буцаах: Promise<dataURL|null>
-  const ZOOM_MIN = 0.5, ZOOM_MAX = 3;   // гүйлгэгчийн зах: 0.5× … 3×, голд 1×
+  // ── ЗУРАГ ТААРУУЛАХ: зургийг ТАЙРАХГҮЙ ──────────────────────────────────
+  // Зураг бүтнээрээ хадгалагдана. Тааруулагч нь зөвхөн карт дотор хэвтээ/
+  // босоо байрлал (cx, cy: 0..1) ба хэмжээг (zoom) тодорхойлж буцаана.
+  // zoom = 1 нь зураг хүрээг ЯГ дүүргэсэн хэмжээ — цагаан зай гарахгүй.
+  const ZOOM_MIN = 1, ZOOM_MAX = 3;
+  const clamp01 = (v) => Math.min(1, Math.max(0, Number(v) || 0));
   function cropModal(src, opts) {
     const o = opts || {};
     return new Promise((resolve) => {
-      // Хүрээ нь ургийн модны картын зурагтай ЯГ ижил харьцаатай
-      const AR = cardAspect();
+      const AR = cardAspect();                     // картын хүрээний харьцаа
+      const p0 = o.params || {};
       const wrap = document.createElement('div');
       wrap.className = 'crop-wrap';
       wrap.innerHTML =
@@ -2635,10 +2670,10 @@ function genitiveName(name) {
             (o.name ? '<div class="crop-prev"><b>' + escapeHtml(o.name) + '</b>' +
               (o.meta ? '<i>' + escapeHtml(o.meta) + '</i>' : '') + '</div>' : '') +
           '</div>' +
-          '<div class="crop-hint">Чирж зөөнө · 🔍 гүйлгэгчээр томруулна/жижигрүүлнэ (голд 1×)</div>' +
+          '<div class="crop-hint">Зургаа чирж байрлуулна · 🔍 гүйлгэгчээр томруулна (зураг хүрээнээс бага болохгүй)</div>' +
           '<div class="crop-zoom"><span aria-hidden="true">🔍</span>' +
-            '<input id="crop_zoom" type="range" min="50" max="300" step="1" value="100" aria-label="Томруулах, жижигрүүлэх">' +
-            '<button type="button" class="crop-zval" id="crop_zval" title="Хэвийн хэмжээ (1×)">1.0×</button></div>' +
+            '<input id="crop_zoom" type="range" min="100" max="300" step="1" value="100" aria-label="Зургийн хэмжээ">' +
+            '<button type="button" class="crop-zval" id="crop_zval" title="Хүрээг дүүргэсэн хэмжээ">1.0×</button></div>' +
           '<div class="crop-actions">' +
             '<button type="button" class="crop-cancel">Болих</button>' +
             '<button type="button" class="crop-save">Хадгалах</button>' +
@@ -2650,26 +2685,25 @@ function genitiveName(name) {
       const img = wrap.querySelector('#crop_img');
       const zoomEl = wrap.querySelector('#crop_zoom');
       const zval = wrap.querySelector('#crop_zval');
-      let iw = 0, ih = 0, zoom = 1, tx = 0, ty = 0, done = false;
+      let iw = 0, ih = 0, ar = 0, done = false;
+      let zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(p0.zoom) || 1));
+      let cx = p0.cx == null ? 0.5 : clamp01(p0.cx);
+      let cy = p0.cy == null ? 0.5 : clamp01(p0.cy);
       const W = () => stage.clientWidth, H = () => stage.clientHeight;
-      const base = () => Math.max(W() / iw, H() / ih);   // «cover» — 1× үед хүрээг бүрэн дүүргэнэ
-      const clampPan = () => {
-        const sc = base() * zoom, dw = iw * sc, dh = ih * sc;
-        // Хүрээнээс жижиг бол төвдөө барина (зум out), том бол ирмэгт хүртэл чирнэ
-        if (dw <= W()) tx = (W() - dw) / 2; else tx = Math.min(0, Math.max(W() - dw, tx));
-        if (dh <= H()) ty = (H() - dh) / 2; else ty = Math.min(0, Math.max(H() - dh, ty));
+      const dims = () => {
+        const w = W(), h = H();
+        let cw = w, ch = h;
+        if (ar) { if (w / h > ar) { ch = h; cw = h * ar; } else { cw = w; ch = w / ar; } }
+        return { dw: cw * zoom, dh: ch * zoom };
       };
       const paint = () => {
-        const sc = base() * zoom;
-        img.style.width = Math.round(iw * sc) + 'px';
-        img.style.height = Math.round(ih * sc) + 'px';
-        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px)';
-      };
-      const center = () => {
-        const sc = base() * zoom;
-        tx = Math.round((W() - iw * sc) / 2);
-        ty = Math.round((H() - ih * sc) / 2);
-        clampPan(); paint();
+        const d = dims();
+        img.style.width = d.dw.toFixed(1) + 'px';
+        img.style.height = d.dh.toFixed(1) + 'px';
+        img.style.left = (-(cx * Math.max(0, d.dw - W()))).toFixed(1) + 'px';
+        img.style.top = (-(cy * Math.max(0, d.dh - H()))).toFixed(1) + 'px';
+        if (zval) zval.textContent = zoom.toFixed(1) + '×';
+        if (zoomEl) zoomEl.value = String(Math.round(zoom * 100));
       };
       const close = (val) => {
         if (done) return; done = true;
@@ -2682,72 +2716,56 @@ function genitiveName(name) {
       img.onload = () => {
         iw = img.naturalWidth || img.width; ih = img.naturalHeight || img.height;
         if (!iw || !ih) return close(null);
-        center();
+        ar = iw / ih;
+        paint();
       };
       img.onerror = () => { toast('Энэ зургийг нээх боломжгүй байна'); close(null); };
       img.src = src;
 
-      // Чирж зөөх (хулгана + хуруу — pointer events)
+      // Чирж зөөх (хулгана + хуруу) — цагаан зай гарахгүйн тулд хязгаартай
       let drag = null;
       stage.addEventListener('pointerdown', (e) => {
-        drag = { x: e.clientX, y: e.clientY, tx, ty };
+        const d = dims();
+        drag = {
+          x: e.clientX, y: e.clientY, cx, cy,
+          ox: Math.max(0, d.dw - W()), oy: Math.max(0, d.dh - H())
+        };
         try { stage.setPointerCapture(e.pointerId); } catch (err) {}
         stage.classList.add('drag');
       });
       stage.addEventListener('pointermove', (e) => {
         if (!drag) return;
-        tx = drag.tx + (e.clientX - drag.x);
-        ty = drag.ty + (e.clientY - drag.y);
-        clampPan(); paint();
+        if (drag.ox > 0) cx = clamp01(drag.cx - (e.clientX - drag.x) / drag.ox);
+        if (drag.oy > 0) cy = clamp01(drag.cy - (e.clientY - drag.y) / drag.oy);
+        paint();
       });
       const endDrag = () => { drag = null; stage.classList.remove('drag'); };
       stage.addEventListener('pointerup', endDrag);
       stage.addEventListener('pointercancel', endDrag);
       stage.addEventListener('pointerleave', endDrag);
 
-      // Томруулах/ЖИЖИГРҮҮЛЭХ — төвөө тойрч өөрчлөгдөнө (голд 1×)
-      const setZoom = (z2, refocus) => {
-        z2 = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z2));
-        const cx = W() / 2, cy = H() / 2, k = z2 / zoom;
-        if (refocus) { tx = cx - (cx - tx) * k; ty = cy - (cy - ty) * k; }
-        zoom = z2; clampPan(); paint();
-        if (zval) zval.textContent = zoom.toFixed(1) + '×';
-      };
-      zoomEl.addEventListener('input', () => setZoom((+zoomEl.value || 100) / 100, true));
-      if (zval) zval.onclick = () => { zoomEl.value = 100; setZoom(1, true); };
+      // Хэмжээ: хамгийн бага нь хүрээг яг дүүргэсэн 1× — түүнээс зөвхөн томорно
+      zoomEl.addEventListener('input', () => {
+        zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, (+zoomEl.value || 100) / 100));
+        paint();
+      });
+      if (zval) zval.onclick = () => { zoom = 1; paint(); };
 
       wrap.querySelector('.crop-cancel').onclick = () => close(null);
       wrap.addEventListener('click', (e) => { if (e.target === wrap) close(null); });
       document.addEventListener('keydown', onKey);
       wrap.querySelector('.crop-save').onclick = () => {
-        try {
-          const sc = base() * zoom;
-          const sx = -tx / sc, sy = -ty / sc, sw = W() / sc, sh = H() / sc;
-          let outW = CROP_OUT_W, url = '';
-          for (let i = 0; i < 5; i++) {
-            const outH = Math.max(1, Math.round(outW / AR));
-            const cv = document.createElement('canvas');
-            cv.width = outW; cv.height = outH;
-            const cx2 = cv.getContext('2d');
-            cx2.fillStyle = '#fff'; cx2.fillRect(0, 0, outW, outH);
-            cx2.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
-            url = cv.toDataURL('image/jpeg', 0.88);
-            if (url.length <= CROP_MAX_CHARS) break;
-            outW = Math.round(outW * 0.82);
-          }
-          if (!url || url.length > CROP_MAX_CHARS) { toast('Зураг багтахгүй байна — өөр зураг сонгоно уу'); return; }
-          close(url);
-        } catch (e) {
-          toast('Энэ зургийг тайрч чадсангүй (гадаад линк байж болно)');
-        }
+        if (!ar) return;
+        close({ zoom: Number(zoom.toFixed(3)), cx: Number(cx.toFixed(4)), cy: Number(cy.toFixed(4)), ar: Number(ar.toFixed(4)) });
       };
     });
   }
-  // Файлаас: объект URL үүсгэж, тааруулагчийг нээж, үр дүнг буцаана
-  async function cropPhoto(file) {
-    const url = URL.createObjectURL(file);
-    try { return await cropModal(url); }
-    finally { try { URL.revokeObjectURL(url); } catch (e) {} }
+  // Файлаас: ЭХ ЗУРГИЙГ БҮТНЭЭР нь (тайрахгүй) бэлтгэж, тааруулагчаас
+  // зөвхөн хэмжээ/байрлалын параметрийг авна.
+  async function pickCover(file, opts) {
+    const url = await resizePhoto(file, { max: 1400 });
+    const prm = await cropModal(url, opts || {});
+    return prm ? { url, params: prm } : null;
   }
   window.__photoPick = async (p) => {
     const inp = $(p + '_file');
@@ -2757,9 +2775,9 @@ function genitiveName(name) {
       if (!/^image\//i.test(f.type || '') && !/\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(f.name || '')) {
         throw new Error('Зураг файл биш байна');
       }
-      // Эхлээд тааруулагч — хэрэглэгч нүүрээ төвлөрүүлнэ
-      let url = await cropPhoto(f);
-      if (url == null) { inp.value = ''; return; }      // «Болих»
+      // Зургийг ТАЙРАХГҮЙ — эх зургийг бүтнээр нь хадгална
+      let url = await resizePhoto(f, { max: 1400 });
+      if (url == null) { inp.value = ''; return; }
       $(p + '_photo').value = url;
       window.__photoPrev(p);
       inp.value = '';
@@ -2773,18 +2791,10 @@ function genitiveName(name) {
       } catch (e2) { toast(e2.message || e.message); inp.value = ''; }
     }
   };
-  // Одоо байгаа зургийг дахин тааруулах (засах форм)
-  window.__photoCrop = async (p) => {
-    const inp = $(p + '_photo');
-    const pv = $(p + '_prev');
-    const pvImg = pv && pv.querySelector('img');
-    // Талбар хоосон боловч карт дээр зураг байгаа бол (lazy линк) түүнийг авна
-    const src = (inp ? String(inp.value || '').trim() : '') || (pvImg ? String(pvImg.getAttribute('src') || '') : '');
-    if (!src) { toast('Эхлээд зураг сонгоно уу'); return; }
-    try {
-      const url = await cropModal(src);
-      if (url) { inp.value = url; window.__photoPrev(p); }
-    } catch (e) { toast('Энэ зургийг тайрч чадсангүй (гадаад линк байж болно)'); }
+  // Форм доторх зургийг тааруулах — карт дээрх хэмжээ/байрлал нь
+  // профайлын «Зураг тааруулах» товчоор реал цагт тохируулагдана.
+  window.__photoCrop = async () => {
+    toast('Зургийн байрлалыг профайл дахь «Зураг тааруулах» товчоор тааруулна');
   };
   // Утасны камераар авсан ТОМ зургийг ч хүлээж авна:
   //  • эх файл 40MB хүртэл (өмнө 10MB-аас дээш бол шууд алдаа гардаг байсан)
@@ -3569,8 +3579,10 @@ function genitiveName(name) {
     inp.onchange = async () => {
       try {
         if (!inp.files || !inp.files[0]) return;
-        const url = await cropPhoto(inp.files[0]);   // pan & zoom тайруулагч
-        if (url) await window.__coverSave(id, url);
+        const m0 = byId.get(id) || {};
+        // Эх зургийг бүтнээр нь хадгалаад, зөвхөн харагдах хэмжээ/байрлалыг тааруулна
+        const r = await pickCover(inp.files[0], { name: coverLabel(id, m0) });
+        if (r) await window.__coverSave(id, r.url, r.params);
       } catch (e) { toast(e.message || 'Энэ зургийг тайрч чадсангүй'); }
       finally { inp.remove(); }
     };
@@ -3578,29 +3590,57 @@ function genitiveName(name) {
   };
   // Одоо байгаа нүүр зургийг ДАХИН тааруулах — дахин хуулах шаардлагагүй.
   // Зураг байхгүй бол «Нүүр зураг»-ын сонголт руу шилжинэ.
+  function coverLabel(id, m) {
+    const pat = patronymicOf(id);
+    return { name: (pat ? pat + ' ' : '') + (m.name || '') };
+  }
+  // Серверийн lazy линкээр ирсэн зургийг өгөгдлийн URL болгож хөрвүүлнэ
+  function toDataUrl(src) {
+    if (!src || src.indexOf('data:') === 0) return Promise.resolve(src);
+    return fetch(src, { credentials: 'same-origin' })
+      .then(r => r.blob())
+      .then(b => new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result || ''));
+        fr.onerror = () => rej(new Error('Зургийг уншиж чадсангүй'));
+        fr.readAsDataURL(b);
+      }));
+  }
   window.__coverAdjust = async (id) => {
     const m = byId.get(id) || {};
     let src = String(m.photo || '').trim();
     if (!src) { toast('Эхлээд нүүр зураг сонгоно уу'); window.__coverPick(id); return; }
     if (src.indexOf('data:') !== 0 && src.indexOf('/api/members/') !== 0) {
-      // Гадаад линк — тайрах боломжгүй
       toast('Гадаад линкээр орсон зураг — шинээр «Нүүр зураг»-аас сонгоно уу');
       return;
     }
-    const pat = patronymicOf(id);
-    const url = await cropModal(src, {
-      name: (pat ? pat + ' ' : '') + (m.name || ''),
-      meta: [yearOf(m), m.alive === 0 ? 'нас барсан' : ''].filter(Boolean).join(' · ')
-    });
-    if (url) await window.__coverSave(id, url);
-  };
-  window.__coverSave = async (id, url) => {
     try {
-      await post('/api/members/' + id + '/cover', { url });
+      const dataUrl = await toDataUrl(src);
+      const pat = patronymicOf(id);
+      const prm = await cropModal(dataUrl, {
+        name: (pat ? pat + ' ' : '') + (m.name || ''),
+        meta: [yearOf(m), m.alive === 0 ? 'нас барсан' : ''].filter(Boolean).join(' · '),
+        params: { zoom: m.pz, cx: m.pcx, cy: m.pcy }
+      });
+      if (prm) await window.__coverSave(id, dataUrl, prm);
+    } catch (e) { toast(e.message || 'Зургийг нээж чадсангүй'); }
+  };
+  window.__coverSave = async (id, url, p) => {
+    try {
+      const prm = p || {};
+      const r = await post('/api/members/' + id + '/cover', {
+        url, zoom: prm.zoom, cx: prm.cx, cy: prm.cy, ar: prm.ar
+      });
       const mm = byId.get(id);
-      if (mm) mm.photo = url;
+      if (mm) {
+        mm.photo = url;
+        mm.pz = r.pz == null ? null : r.pz;
+        mm.pcx = r.pcx == null ? null : r.pcx;
+        mm.pcy = r.pcy == null ? null : r.pcy;
+        mm.par = r.par == null ? null : r.par;
+      }
       // Мод дахин зурагдахгүй — зөвхөн тухайн картын зургийг солино
-      setCardPhoto(id, url);
+      setCardPhoto(id, url, mm);
       toast('Нүүр зураг солигдлоо ✓');
       window.__detail(id);
     } catch (e) { toast(e.message); }
@@ -3611,7 +3651,10 @@ function genitiveName(name) {
       window.__closeModal();
       // Нүүр зураг хоосон байсан бол сервер эхний зургийг нүүр болгоно — карт дээр шууд харагдана
       const mm = byId.get(id);
-      if (mm && r.photo) { mm.photo = r.photo; setCardPhoto(id, r.photo); }
+      if (mm && r.photo) {
+        mm.photo = r.photo; mm.pz = null; mm.pcx = null; mm.pcy = null; mm.par = null;
+        setCardPhoto(id, r.photo, mm);
+      }
       toast(r.points ? 'Нэмэгдлээ ✓ +' + r.points + ' оноо' : 'Нэмэгдлээ ✓');
       window.__detail(id);
     } catch (e) { toast(e.message); }
@@ -4310,17 +4353,20 @@ function genitiveName(name) {
   // ---------- нэмэлт ----------
   // ЗӨВХӨН тухайн картын зургийг солино — мод дахин зурагдахгүй, камер
   // хөдлөхгүй, нээсэн/хумисан салаа хэвээр. (Зураг хадгалсны дараа ашиглана.)
-  function setCardPhoto(id, url) {
+  function setCardPhoto(id, url, m) {
     if (!id || !url) return;
     const card = document.querySelector('#cards .card[data-id="' + id + '"]');
     if (!card) return;
     const ava = card.querySelector('.ava');
     if (!ava) return;
+    const style = photoBoxStyle(m || {}, 140, 96);
     if (ava.tagName === 'IMG') {
       ava.src = url;                    // зургийг л сольсон — layout хөндөхгүй
+      ava.setAttribute('style', style);
     } else {
       const im = document.createElement('img');
       im.className = 'ava'; im.alt = ''; im.src = url; im.loading = 'lazy';
+      im.setAttribute('style', style);
       ava.replaceWith(im);
     }
   }

@@ -155,13 +155,18 @@ export const MIGRATIONS = [
   "ALTER TABLE member_events ADD COLUMN photo TEXT DEFAULT ''",
   // Нүүр зурагт lazy линк хадгалагдсан алдааг цэвэрлэнэ (эвдэрсэн зураг → энгийн дүрс)
   "UPDATE members SET photo='' WHERE photo LIKE '/api/members/%/photo'",
+  // Нүүр зургийн ХАРГАЛЗАХ БАЙРЛАЛ/ХЭМЖЭЭ (зургийг тайрахгүй, зөвхөн параметр)
+  "ALTER TABLE members ADD COLUMN photo_zoom REAL DEFAULT NULL",
+  "ALTER TABLE members ADD COLUMN photo_cx REAL DEFAULT NULL",
+  "ALTER TABLE members ADD COLUMN photo_cy REAL DEFAULT NULL",
+  "ALTER TABLE members ADD COLUMN photo_ar REAL DEFAULT NULL",
   "DELETE FROM default_avatars WHERE slot='n_any'"
 ];
 
 // Схем/миграцийн хувилбар. SCHEMA эсвэл MIGRATIONS-д ӨӨРЧЛӨЛТ оруулбал
 // энэ дугаарыг заавал нэмэгдүүлнэ — тэгвэл бүх isolate шинээр нэг удаа
 // schema-г гүйцэтгэж, дараа нь хурдан замаар (1 уншилт) ажиллана.
-const SCHEMA_V = '2026-11-17.1';
+const SCHEMA_V = '2026-11-17.2';
 
 export async function initDb(env) {
   if (ready) return;

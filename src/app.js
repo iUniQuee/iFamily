@@ -142,7 +142,7 @@ const LIGHT_MEMBERS_SQL =
   "SELECT id, name, sex, birth_year, birth_date, birth_place, clan, alive, phone, bio, honors, " +
   "CASE WHEN photo LIKE 'data:%' THEN '/api/members/' || id || '/photo' ELSE COALESCE(photo,'') END AS photo, " +
   "CASE WHEN photo LIKE 'data:%' THEN length(photo) ELSE 0 END AS photo_bytes, " +
-  "death_date, emoji, created_by, created_at FROM members";
+  "death_date, emoji, created_by, created_at, photo_zoom, photo_cx, photo_cy, photo_ar FROM members";
 
 async function rawTables(env, full) {
   const slot = full ? 'full' : 'light';
@@ -206,6 +206,11 @@ function sanitize(m, hasBio, editable) {
     birth_place: hasBio ? (m.birth_place || '') : '',
     clan: hasBio ? (m.clan || '') : '',
     alive: m.alive, photo: m.photo || null, emoji: m.emoji || '',
+    // Нүүр зургийн харагдац: zoom (1=хүрээг бүрэн дүүргэсэн) ба X/Y байрлал (0..1)
+    pz: m.photo_zoom == null ? null : Number(m.photo_zoom),
+    pcx: m.photo_cx == null ? null : Number(m.photo_cx),
+    pcy: m.photo_cy == null ? null : Number(m.photo_cy),
+    par: m.photo_ar == null ? null : Number(m.photo_ar),
     death_date: hasBio ? (m.death_date || '') : '',
     honors: hasBio ? (m.honors || '') : '',
     bio: hasBio ? (m.bio || null) : null,
@@ -2690,9 +2695,21 @@ async function api(req, env, url, path) {
     } else if (b.url !== undefined) {
       url = normPhoto(b.url) || '';
     }
-    await run(env, 'UPDATE members SET photo=? WHERE id=?', url, id);
+    // Зургийг ТАЙРАХГҮЙ — зөвхөн карт дотор хэрхэн харагдахыг (zoom, X, Y)
+    // хадгална. Параметргүй бол төвдөө, хүрээг бүрэн дүүргэсэн байдал.
+    const clamp = (v, lo, hi, def) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def;
+    };
+    const zoom = b.zoom === undefined ? null : clamp(b.zoom, 1, 4, 1);
+    const cx = b.cx === undefined ? null : clamp(b.cx, 0, 1, 0.5);
+    const cy = b.cy === undefined ? null : clamp(b.cy, 0, 1, 0.5);
+    const ar = b.ar === undefined ? null : clamp(b.ar, 0.1, 10, null);
+    await run(env,
+      'UPDATE members SET photo=?, photo_zoom=?, photo_cx=?, photo_cy=?, photo_ar=? WHERE id=?',
+      url, zoom, cx, cy, ar, id);
     await audit(env, user, 'cover_photo', `${mem.name} (#${id})`);
-    return json({ ok: true, photo: url });
+    return json({ ok: true, photo: url, pz: zoom, pcx: cx, pcy: cy, par: ar });
   }
 
   throw httpErr(404, 'Маршрут олдохгүй');
