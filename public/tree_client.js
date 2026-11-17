@@ -1919,24 +1919,20 @@ function genitiveName(name) {
     }
     return false;
   }
+  // Карт дээр дарах = ТУХАЙН ХҮН РҮҮ ТӨВЛӨРЧ ТОМРУУЛАХ.
+  // Өмнө нь энд full-layout-ыг `open=<дарсан хүн>`-ээр дахин татдаг байсан тул
+  // сервер зөвхөн тэр хүний нэг салбарыг буцааж, «манай гэр бүл нуугдаад өөр
+  // гэр бүл гарч ирдэг» байв. Одоо мод БҮТЭН хэвээр үлдэж, харагдац л зөөгдөнө.
   window.__accordion = async (id) => {
     if (id == null || !nodes.has(id)) return;
     selected = id;
-    const wasFocus = focus != null;
-    if (wasFocus) {
+    if (focus != null) {
       focus = null; focusL = null; focusSeq++;
       revealed = new Set(); collapsed = new Set(); closedFams = new Set();
       openMid = 0; showHidden = false;
-      fullL = null; fullSeq++;
     }
-    if (!wasFocus && fullL && fullL.open === id) {
-      await window.__fullOpen(id);
-      render();
-      return;
-    }
-    fullOpen = id; fullClosed = false;
-    if (!(S.viewer && S.viewer.member_id)) { render(); return; }
-    await loadFullLayout({ keepView: true });
+    fullOpen = null;
+    fullClosed = false;
     render();
     zoomFamily(id);
   };
