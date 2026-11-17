@@ -2334,14 +2334,28 @@ async function api(req, env, url, path) {
       restored[t] = ok;
       if (skipped) restored[t + '_skipped'] = skipped;
     }
-    // Нов бааз дээр бүртгэгдсэн хэрэглэгчийн карт/эрхийг утсаар тааруулна
+    // ХЭРЭГЛЭГЧДИЙН БҮРТГЭЛ (утас, нууц үгийн хэш, эрх, картын холбоос) —
+    // өмнө нь сэргээгддэггүй байсан тул шинэ бааз дээр зөвхөн 1 аккаунт
+    // үлддэг байв. Одоо утсаар тааруулж upsert хийнэ (устгахгүй).
     let linked = 0;
     for (const u of (b.users || [])) {
-      const ex = await get(env, 'SELECT id FROM users WHERE phone=?', u.phone);
-      if (!ex) continue;
-      await run(env, 'UPDATE users SET member_id=?, role=? WHERE id=?', u.member_id, u.role || 'member', ex.id);
-      linked++;
+      const phone = String(u && u.phone || '').replace(/\D/g, '');
+      if (!phone) continue;
+      try {
+        const ex = await get(env, 'SELECT id FROM users WHERE phone=?', phone);
+        if (ex) {
+          await run(env, 'UPDATE users SET name=?, role=?, member_id=?, password=?, salt=? WHERE id=?',
+            u.name || '', u.role || 'member', u.member_id || null,
+            u.password || null, u.salt || null, ex.id);
+        } else {
+          await insert(env, 'INSERT INTO users(phone, name, role, member_id, password, salt) VALUES(?,?,?,?,?,?)',
+            phone, u.name || '', u.role || 'member', u.member_id || null,
+            u.password || null, u.salt || null);
+        }
+        linked++;
+      } catch (e) { /* нэг хэрэглэгч алдаатай бол бусдыг үргэлжлүүлнэ */ }
     }
+    restored.users = linked;
     await audit(env, user, 'restore', JSON.stringify(restored));
     return json({ ok: true, restored, linked });
   }
