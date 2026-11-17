@@ -736,7 +736,9 @@ async function backupData(env) {
       members: await all(env, 'SELECT * FROM members'),
       children: await all(env, 'SELECT * FROM children'),
       unions: await all(env, 'SELECT * FROM unions'),
-      users: await all(env, 'SELECT id, phone, name, role, member_id, created_at FROM users'),
+      // password/salt — PBKDF2 хэш (нээлттэй нууц үг БИШ). Зөвхөн супер
+      // админы backup-т орно; ингэснээр шилжилт хийхэд хүмүүсийн нэвтрэлт хэвээр.
+      users: await all(env, 'SELECT id, phone, name, role, member_id, created_at, password, salt FROM users'),
       design: await all(env, 'SELECT * FROM design'),
       albums: await all(env, 'SELECT * FROM albums'),
       album_photos: await all(env, 'SELECT * FROM album_photos'),
@@ -2344,9 +2346,14 @@ async function api(req, env, url, path) {
       try {
         const ex = await get(env, 'SELECT id FROM users WHERE phone=?', phone);
         if (ex) {
-          await run(env, 'UPDATE users SET name=?, role=?, member_id=?, password=?, salt=? WHERE id=?',
-            u.name || '', u.role || 'member', u.member_id || null,
-            u.password || null, u.salt || null, ex.id);
+          if (u.password && u.salt) {
+            await run(env, 'UPDATE users SET name=?, role=?, member_id=?, password=?, salt=? WHERE id=?',
+              u.name || '', u.role || 'member', u.member_id || null, u.password, u.salt, ex.id);
+          } else {
+            // Backup-д хэш байхгүй бол БАЙГАА нууц үгийг устгахгүй
+            await run(env, 'UPDATE users SET name=?, role=?, member_id=? WHERE id=?',
+              u.name || '', u.role || 'member', u.member_id || null, ex.id);
+          }
         } else {
           await insert(env, 'INSERT INTO users(phone, name, role, member_id, password, salt) VALUES(?,?,?,?,?,?)',
             phone, u.name || '', u.role || 'member', u.member_id || null,
