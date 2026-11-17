@@ -124,10 +124,36 @@ function canEdit(user, targetId, trMap) {
   return ar >= tr; // доод эрэмбэтэй хүн дээд эрэмбэтэйг засахгүй
 }
 
+// ── Түүхий хүснэгтийн кэш (isolate дотор) ──────────────────────────────
+// `members` хүснэгтэд нүүр зургууд base64-аар (нийт ~6 MB) хадгалагддаг тул
+// `SELECT *` нь хүснэгтийг бүхэлд нь татдаг байв. Хүсэлт бүрт (нэг дарахад
+// 2–3 хүсэлт зэрэг) татахгүйн тулд 10 секунд кэшилнэ. Бичих хүсэлт (POST/
+// PUT/DELETE) ирмэгц кэш шууд цэвэрлэгддэг тул өөрчлөлт тэр даруй харагдана.
+let RAW = null; // { at, members, children, unions }
+const RAW_TTL = 10000;
+function clearRawCache() { RAW = null; }
+async function rawTables(env) {
+  const now = Date.now();
+  if (RAW && now - RAW.at < RAW_TTL) return RAW;
+  const [members, children, unions] = await Promise.all([
+    all(env, 'SELECT * FROM members'),
+    all(env, 'SELECT father_id, mother_id, child_id, rel_type FROM children'),
+    all(env, 'SELECT a_id, b_id FROM unions')
+  ]);
+  RAW = { at: now, members, children, unions };
+  return RAW;
+}
+
 async function contextOf(user, env) {
-  const members = await all(env, 'SELECT * FROM members');
-  const children = await all(env, 'SELECT father_id, mother_id, child_id, rel_type FROM children');
-  const unions = await all(env, 'SELECT a_id, b_id FROM unions');
+  // Гурван хүснэгт + хэрэглэгчийн зэрэглэлийг ЗЭРЭГ татна.
+  const [raw, rankRows] = await Promise.all([
+    rawTables(env),
+    all(env, 'SELECT member_id, role FROM users WHERE member_id IS NOT NULL')
+  ]);
+  // Кэшлэсэн мөрүүдийг дуудагч тал өөрчлөхөөс сэргийлж гүехэн хуулбар.
+  const members = raw.members.map(m => ({ ...m }));
+  const children = raw.children.map(c => ({ ...c }));
+  const unions = raw.unions.map(u => ({ ...u }));
   const rel = buildRelations(children, unions);
   const ids = new Set(members.map(x => x.id));
   const isAdmin = !!user && (user.role === 'super' || user.role === 'admin');
@@ -140,7 +166,6 @@ async function contextOf(user, env) {
   } else {
     vis = new Set(); bio = new Set();
   }
-  const rankRows = await all(env, 'SELECT member_id, role FROM users WHERE member_id IS NOT NULL');
   const trMap = new Map(rankRows.map(r => [r.member_id, RANK[r.role] || 1]));
   return { members, children, unions, rel, vis, bio, isAdmin, trMap };
 }
@@ -772,6 +797,9 @@ async function backupData(env) {
 
 export async function handle(req, env) {
   await initDb(env);
+  // Бичих хүсэлт ирмэгц кэшлэсэн хүснэгтүүдийг цэвэрлэнэ — өөрчлөлт
+  // (гишүүн нэмэх/засах/устгах, зураг солих) дараагийн хүсэлтэд шууд харагдана.
+  if (req.method !== 'GET' && req.method !== 'HEAD') clearRawCache();
   const url = new URL(req.url);
   const path = url.pathname;
   try {
